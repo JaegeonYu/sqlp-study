@@ -123,7 +123,8 @@ set feedback on
 prompt 관찰: 결과는 둘 다 300건. 4-a 의 서브쿼리 단계 Starts 와 전체 Buffers 는? 4-b 의 WINDOW SORT PUSHED RANK 는 무엇을 줄여주는가?
 
 prompt
-prompt ===== [5-0] 이 DB에서 병렬 처리가 가능한가? =====
+prompt ===== [5] 이 DB에서 병렬 처리가 가능한가? =====
+prompt     Oracle 23ai Free 는 병렬 실행(Parallel execution) 옵션이 꺼져 있다. 직접 확인해 보자.
 column parameter format a30
 column value     format a20
 select parameter, value
@@ -134,60 +135,36 @@ select name, value
 from   v$parameter
 where  name in ('cpu_count', 'parallel_max_servers', 'parallel_servers_target',
                 'parallel_degree_policy', 'parallel_min_servers');
-prompt --- 예상 계획(EXPLAIN PLAN)에서 옵티마이저가 병렬 계획을 만드는지 확인
-explain plan for
-select /*+ full(b) parallel(b 2) */ grp_id, sum(amount)
-from   big_table b
-group  by grp_id;
-set pagesize 0
-set heading off
-select plan_table_output from table(dbms_xplan.display(null, null, 'BASIC +PARALLEL +HINT_REPORT'));
-set pagesize 100
-set heading on
-prompt 관찰: Parallel execution 옵션이 TRUE 인가? 예상 계획에 PX 오퍼레이션이 있는가? Hint Report 에 parallel 힌트가 U(Unused) 로 표시되는가?
+prompt 관찰: Parallel execution 값은? parallel_max_servers 는?
 
 prompt
-prompt ===== [5] 병렬 쿼리 실행계획 읽기 (DOP 2) =====
-prompt --- [5-a] 병렬 집계
+prompt ===== [6] parallel 힌트를 줘도 직렬로 수행된다: Hint Report 읽기 =====
 set feedback only
-select /*+ full(b) parallel(b 2) */ /* w11_px_a */ grp_id, sum(amount)
+select /*+ full(b) parallel(b 2) */ grp_id, sum(amount)
 from   big_table b
 group  by grp_id;
 set feedback on
 @@pq_stat
-@@xplan_px w11_px_a
-prompt 관찰: Queries Parallelized, Server Threads 값은? 실행계획에서 PX COORDINATOR, PX SEND, PX RECEIVE, PX BLOCK ITERATOR 를 찾고 TQ, IN-OUT(P->P, P->S), PQ Distrib 컬럼을 읽어라.
+set feedback only
+select /*+ full(b) parallel(b 2) */ grp_id, sum(amount)
+from   big_table b
+group  by grp_id;
+set feedback on
+@@xplan_hint
+prompt 관찰: Queries Parallelized 가 0 인가? Hint Report 에서 parallel(b 2) 앞의 U 는 무엇을 뜻하는가?
+prompt       PX 오퍼레이션이 있는 병렬 실행계획 읽기는 README 의 "병렬 실행계획 읽기" 예시로 연습한다.
 
 prompt
-prompt ===== [6] 병렬 조인 분배 방식: broadcast vs hash =====
-prompt --- [6-a] 작은 테이블(W11_GRP, 100건)을 모든 PX 서버에 broadcast
-select /*+ leading(g) use_hash(b) full(g) full(b) parallel(g 2) parallel(b 2) pq_distribute(b broadcast none) */ /* w11_px_b */
-       count(*), sum(b.amount)
-from   w11_grp g, big_table b
-where  b.grp_id = g.grp_id
-and    g.grp_name like 'GROUP-1%';
-@@pq_stat
-@@xplan_px w11_px_b
-prompt --- [6-b] 양쪽을 조인 키로 hash 분배
-select /*+ leading(g) use_hash(b) full(g) full(b) parallel(g 2) parallel(b 2) pq_distribute(b hash hash) */ /* w11_px_c */
-       count(*), sum(b.amount)
-from   w11_grp g, big_table b
-where  b.grp_id = g.grp_id
-and    g.grp_name like 'GROUP-1%';
-@@pq_stat
-@@xplan_px w11_px_c
-prompt 관찰: 두 계획의 PQ Distrib 컬럼(BROADCAST / HASH)과 PX SEND 단계 수를 비교하라. 100만 건 쪽을 재분배하지 않는 쪽은 어느 것인가?
-
-prompt
-prompt ===== [7] 병렬 DML =====
+prompt ===== [7] 병렬 DML 도 마찬가지: append 힌트만 적용된다 =====
+-- 이전 단계에서 열린 트랜잭션이 있으면 parallel dml 상태를 바꿀 수 없으므로 먼저 커밋
+commit;
 alter session enable parallel dml;
-insert /*+ append parallel(w 2) */ /* w11_px_d */ into w11_copy w
+insert /*+ append parallel(w 2) */ into w11_copy w
 select /*+ full(b) parallel(b 2) */ *
 from   big_table b
 where  id <= 200000;
-@@pq_stat
-@@xplan_px w11_px_d
+@@xplan_hint
 commit;
 alter session disable parallel dml;
-prompt 관찰: DML Parallelized 값은? LOAD AS SELECT 가 PX COORDINATOR 아래(병렬)에 있는가, 위(직렬)에 있는가?
-prompt       병렬 DML 후 커밋 전에 같은 테이블을 조회하면 어떻게 될까? (README 참고)
+prompt 관찰: LOAD AS SELECT(직접 경로 적재)는 적용되었는가? parallel 힌트는? DML Parallelized 는 아래와 같다.
+@@pq_stat
