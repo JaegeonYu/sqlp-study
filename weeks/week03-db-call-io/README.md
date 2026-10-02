@@ -61,6 +61,7 @@ PL/SQL 루프는 DB 안에서 돌기 때문에 `user calls`가 거의 늘지 않
 
 ## 제출
 `weeks/week03-db-call-io/submissions/<github-id>/`
+- `concepts.md`: 핵심 개념 3개(자기 말로 + 실습 수치 연결)와 필기 문제 2개 ([templates/concepts.md](../../templates/concepts.md))
 - `result.md`
 - `lab.txt`
 - `challenge.txt`

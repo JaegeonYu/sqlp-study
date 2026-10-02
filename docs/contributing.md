@@ -13,6 +13,8 @@ bash scripts/run.sh weeks/week01-architecture-lock/03_challenge.sql weeks/week01
 # 2) 결과 정리
 cp templates/submission.md weeks/week01-architecture-lock/submissions/<github-id>/result.md
 #    → 표, Before/After, 근거 작성
+cp templates/concepts.md   weeks/week01-architecture-lock/submissions/<github-id>/concepts.md
+#    → 핵심 개념 3개(자기 말로 + 실습 수치 연결), 필기 문제 2개 출제  (week01~11 필수)
 
 # 3) PR
 git add weeks/week01-architecture-lock/submissions/<github-id>
@@ -21,8 +23,35 @@ git push -u origin week01/<github-id>
 #    → GitHub에서 PR 생성, 제목: [week01] <github-id>
 ```
 
+## 이론 노트 (그 주 발표자)
+실습은 "수치로 증명"하는 것을, 이론은 "자기 말로 설명"하는 것을 리뷰합니다. 발표 자료도 PR로 올려서 스터디 전에 미리 리뷰를 받습니다.
+
+```
+D-3  발표자: theory/<id>.md 작성 → PR 생성 (제목: [week01] 이론 노트 - <id>)
+D-3~D-1  스터디원: PR 리뷰 코멘트로 질문 남기기  → 이 질문들이 발표의 중심이 됩니다
+D-day  질문에 답하는 방식으로 발표 → 토론 결과를 노트에 반영해 커밋
+D+1  승인 1건 → 머지 (그 주차의 공식 이론 노트로 남음)
+```
+```bash
+git switch main && git pull
+git switch -c week01/theory-<github-id>
+mkdir -p weeks/week01-architecture-lock/theory
+cp templates/theory.md weeks/week01-architecture-lock/theory/<github-id>.md
+#    → 작성 후 add / commit / push / PR
+```
+
+**작성 원칙**
+- **책을 옮기지 않습니다.** 요약과 재구성만 하고, 인용은 짧게 출처(권·장·쪽)를 붙입니다. 책 그림을 스캔하거나 촬영해 올리지 않습니다.
+- **그림은 Mermaid로 직접 그립니다.** GitHub이 마크다운 안의 ` ```mermaid ` 블록을 다이어그램으로 보여줍니다.
+- **모든 개념은 실습과 연결합니다.** "이번 주 `02_lab.sql`의 몇 번 단계에서, 어떤 수치로 확인되는가"를 적습니다.
+
+**이론 PR 리뷰 기준**
+- 정확성: "이 설명의 근거는 책 몇 장인가요? 23ai에서도 같은가요?"
+- 연결: "이 개념이 실습의 어느 수치로 확인되나요?"
+- 이해: "이 부분을 한 문장으로 다시 설명해 주실 수 있나요?"
+
 ## 규칙
-1. **본인 폴더만 수정합니다.** `weeks/weekNN-*/submissions/<본인 github id>/`. 다른 경로를 건드리면 `check-submission` CI가 실패합니다.
+1. **본인 파일만 수정합니다.** 실습 제출은 `weeks/weekNN-*/submissions/<본인 github id>/`, 이론 노트는 `weeks/weekNN-*/theory/<본인 github id>.md`입니다. 다른 경로를 건드리면 `check-submission` CI가 실패합니다.
 2. **리뷰어는 1명 지정합니다.** 매주 순번표(README)에 따라 정하고, 승인 1건이 있어야 머지할 수 있습니다.
 3. **리뷰 기준은 "수치 근거"입니다.** "좋아요" 대신 아래처럼 남깁니다.
    - "Buffers가 줄어든 이유가 테이블 랜덤 액세스 감소인지, 인덱스 스캔 범위 감소인지 구분해 주세요."

@@ -126,6 +126,7 @@ bash scripts/run.sh weeks/week11-advanced-sql-parallel/03_challenge.sql weeks/we
 
 ## 제출
 `weeks/week11-advanced-sql-parallel/submissions/<github-id>/`
+- `concepts.md`: 핵심 개념 3개(자기 말로 + 실습 수치 연결)와 필기 문제 2개 ([templates/concepts.md](../../templates/concepts.md))
 - `result.md`: "병렬 실행계획 읽기" 예시 A~C의 질문 답도 포함
 - `lab.txt`
 - `challenge.txt`

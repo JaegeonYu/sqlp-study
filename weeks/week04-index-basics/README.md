@@ -76,6 +76,7 @@ WHERE절 4개를 결과가 같고 인덱스를 탈 수 있는 형태로 다시 �
 
 ## 제출
 `weeks/week04-index-basics/submissions/<github-id>/`
+- `concepts.md`: 핵심 개념 3개(자기 말로 + 실습 수치 연결)와 필기 문제 2개 ([templates/concepts.md](../../templates/concepts.md))
 - `result.md`
 - `lab.txt`
 - `tkprof.txt`
