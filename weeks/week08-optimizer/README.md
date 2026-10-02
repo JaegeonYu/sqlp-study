@@ -26,7 +26,7 @@ bash scripts/run.sh weeks/week08-optimizer/99_cleanup.sql   # BIG_TABLE 통계 �
 | 4 | BIG_TABLE.status | E-Rows는 맞아져도 계획은 그대로일 수 있음. 데이터가 흩어진 정도(클러스터링)가 결정 |
 | 5 | 범위 선택도 | `between`의 추정 정확도, 최대값을 벗어난 범위 조건의 E-Rows |
 | 6 | 컬럼 상관관계 | 독립 가정 때문에 E-Rows 1 vs 실제 100. 확장 통계를 수집한 뒤의 E-Rows |
-| 7 | 바인드 피킹 / ACS | `v$sql`의 child cursor, `IS_BIND_SENSITIVE`, `IS_BIND_AWARE` |
+| 7 | 바인드 피킹 / ACS | 'WAIT'용 인덱스 계획으로 'DONE' 19.95만 건을 처리할 때의 Buffers, `v$sql`의 child cursor와 `IS_BIND_SENSITIVE` / `IS_BIND_AWARE`, `v$sql_cs_histogram`, `bind_aware` 힌트 |
 | 8 | 동적 샘플링 | 통계 없는 테이블의 Note 섹션, E-Rows 정확도 |
 | 9 | 실시간 통계 | 일반 DML 후 `user_tab_statistics.NOTES` |
 | 10 | Adaptive Plan | `+ADAPTIVE` 포맷, Note 섹션, 버려진 후보 오퍼레이션 |
@@ -54,6 +54,7 @@ bash scripts/run.sh weeks/week08-optimizer/99_cleanup.sql   # BIG_TABLE 통계 �
 - **최대값을 벗어난 범위 조건의 E-Rows는 0이 아닙니다.** 범위 밖으로 멀어질수록 선형으로 줄어듭니다(이 환경에서 752 vs 0). 책 시절보다 보정이 정교해졌습니다.
 - **Adaptive Plan(12c~).** [10]처럼 `STATISTICS COLLECTOR`를 두고 실행 중에 NL과 Hash 중 하나를 고릅니다. 다만 모든 조인에 적용되지는 않습니다. 챌린지 SQL에서는 적용되지 않았습니다.
 - **실시간 통계(Real-Time Statistics, 19c~)는 Exadata·Cloud 전용입니다.** 이 Free 환경에서는 일반 INSERT 후에도 `NUM_ROWS`가 바뀌지 않았고, `NOTES`도 비어 있었습니다.
+- **Adaptive Cursor Sharing(11g~)이 이 환경에서는 저절로 반응하지 않았습니다.** 히스토그램 컬럼에 바인드를 쓰자 커서는 `IS_BIND_SENSITIVE=Y`가 됐습니다. 하지만 'WAIT'(500건)과 'DONE'(19.95만 건)을 번갈아 5번 실행해도 `v$sql_cs_histogram`에서 모두 같은 bucket에 기록됐고, `IS_BIND_AWARE`는 N으로 남았습니다. 'DONE'은 계속 인덱스 계획으로 7,435 Buffers를 읽었습니다. `/*+ bind_aware */` 힌트를 주면 처음부터 bind-aware 커서로 시작합니다([7-f]).
 - **확장 통계(11g~).** 책이 다루는 "결합 조건의 독립 가정" 문제를 `dbms_stats.create_extended_stats`로 풀 수 있습니다. 이 환경에서 E-Rows가 1 → 100(실제 100)으로 맞아졌습니다.
 
 ## 토론 질문

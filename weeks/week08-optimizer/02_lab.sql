@@ -122,9 +122,27 @@ from   v$sql_cs_histogram h
        join v$sql s on s.sql_id = h.sql_id and s.child_number = h.child_number
 where  s.sql_text like 'select /* w08_acs */%'
 order  by h.child_number, h.bucket_id;
-prompt 관찰: [7-b] 는 'WAIT' 용 계획으로 'DONE' 19.95만 건을 처리했다(Buffers). 몇 번째 실행부터 새 child 커서가 생기는가?
-prompt       IS_BIND_AWARE = Y 인 child 의 계획은? IS_SHAREABLE = N 인 child 는 무엇을 의미할까?
-prompt       (집계 함수로 1행만 돌려주는 SQL 이라면 처리 건수 구간이 항상 같아 ACS 가 반응하지 않을 수 있다)
+prompt 관찰: [7-b]~[7-d] 는 'WAIT'(500건)용 인덱스 계획으로 'DONE' 19.95만 건을 처리했다. Buffers 는? FULL 이었다면?
+prompt       ACS 가 새 child 를 만들었는가? v$sql_cs_histogram 에서 실행들이 어느 bucket 에 기록됐나?
+prompt       (이 환경에서는 실행이 모두 같은 bucket 에 쌓여 ACS 가 반응하지 않았다 → README "책과 다른 점")
+
+prompt --- [7-f] bind_aware 힌트: 처음부터 바인드 값의 선택도마다 계획을 따로 만든다
+exec :st := 'WAIT'
+set feedback only
+select /*+ bind_aware */ /* w08_acs2 */ ord_id, amt from w08_orders where state = :st;
+set feedback on
+@@../../common/xplan
+exec :st := 'DONE'
+set feedback only
+select /*+ bind_aware */ /* w08_acs2 */ ord_id, amt from w08_orders where state = :st;
+set feedback on
+@@../../common/xplan
+select child_number, executions, buffer_gets, plan_hash_value,
+       is_bind_sensitive as sens, is_bind_aware as aware, is_shareable as shr
+from   v$sql
+where  sql_text like 'select /*+ bind_aware */ /* w08_acs2 */%'
+order  by child_number;
+prompt 관찰: 'DONE' 실행에서 새 child 가 생기고 FULL 로 바뀌었나? 바인드 변수를 쓰면서도 값마다 다른 계획을 얻는 비용은 무엇인가?
 
 prompt
 prompt ===== [8] 통계가 없는 테이블: 동적 샘플링 =====
