@@ -1,0 +1,31 @@
+# SQLP 스터디 실습 DB (Oracle Database 23ai Free)
+#   기동:   docker compose -f docker/compose.yml up -d
+#   대기:   bash scripts/wait-db.sh
+#   초기화: docker compose -f docker/compose.yml down -v   (데이터 전부 삭제)
+name: sqlp-study
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23
+    container_name: sqlp-oracle
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-oracle}
+      NLS_LANG: AMERICAN_AMERICA.AL32UTF8
+      TZ: Asia/Seoul
+    ports:
+      - "127.0.0.1:${ORACLE_PORT:-1521}:1521"
+    volumes:
+      - oradata:/opt/oracle/oradata
+      # 최초 기동 시 1회 실행: STUDY 계정 생성
+      - ./init:/container-entrypoint-initdb.d:ro
+      # 저장소 전체를 컨테이너에 마운트 → 컨테이너 안 sqlplus로 스크립트 실행
+      - ..:/workspace:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  oradata:

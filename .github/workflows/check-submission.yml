@@ -1,0 +1,21 @@
+name: check-submission
+
+# 제출 PR: 본인 폴더만 수정했는지, result.md 를 작성했는지 검사
+# 필수 상태 체크로 걸 수 있도록 paths 필터 없이 모든 PR에서 실행 (제출 변경이 없으면 통과)
+on:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check submission rules
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/ci/check-submission.sh

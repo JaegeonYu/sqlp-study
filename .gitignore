@@ -1,0 +1,7 @@
+docker/.env
+*.prf
+*.trc
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

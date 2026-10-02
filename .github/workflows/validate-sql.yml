@@ -1,0 +1,43 @@
+name: validate-sql
+
+# 실습 스크립트가 실제 Oracle 23ai Free에서 오류 없이 도는지 검증
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docker/**"
+      - "common/**"
+      - "scripts/**"
+      - "weeks/*/*.sql"
+      - ".github/workflows/validate-sql.yml"
+  pull_request:
+    paths:
+      - "docker/**"
+      - "common/**"
+      - "scripts/**"
+      - "weeks/*/*.sql"
+      - ".github/workflows/validate-sql.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Oracle Free
+        run: docker compose -f docker/compose.yml up -d
+
+      - name: Wait for DB
+        run: bash scripts/wait-db.sh 900
+
+      - name: Run all week scripts
+        run: bash scripts/ci/smoke.sh
+
+      - name: TKPROF helper
+        run: bash scripts/tkprof.sh week00 | head -60
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs --tail 200 sqlp-oracle
