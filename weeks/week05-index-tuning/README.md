@@ -56,6 +56,7 @@ ms는 캐시 상태에 따라 달라집니다. 판단은 LIO 위주로 하고, m
 ## 책과 다른 점 (23ai)
 - **`TABLE ACCESS BY INDEX ROWID BATCHED`(12c~).** ROWID를 모아 같은 블록끼리 묶어 읽습니다. 그래서 CF가 나쁜 인덱스도 책의 계산(행마다 블록 1개)보다 Buffers가 조금 적게 나올 수 있고, 손익분기점도 책보다 약간 뒤로 밀립니다.
 - **CF 계산 선호도 `TABLE_CACHED_BLOCKS`(12c~).** `dbms_stats.set_table_prefs`로 "최근 N개 블록을 다시 방문하는 것은 CF에 세지 않기"를 설정할 수 있습니다. 기본값은 1이라 책과 같은 방식으로 계산됩니다.
+- **범위 컬럼이 선두인 결합 인덱스에 Skip Scan이 적극 쓰입니다.** `(reg_dt, grp_id)`에 `INDEX` 힌트만 주면 23ai 옵티마이저는 Range Scan(약 276블록) 대신 날짜마다 `grp_id = 7` 위치로 점프하는 Skip Scan(약 112블록)을 골랐습니다. `INDEX_RS_ASC`만으로는 막히지 않아서, [4-b]에서는 `NO_INDEX_SS`를 함께 써서 Range Scan을 강제했습니다. 그래도 `=` 컬럼 선두(6블록)보다는 훨씬 많이 읽습니다.
 - **`FETCH FIRST n ROWS ONLY`(12c~).** 책의 `ROWNUM <= n` 인라인 뷰 패턴과 같은 효과입니다. 실행계획에는 `WINDOW NOSORT STOPKEY` 또는 `COUNT STOPKEY`로 나타납니다.
 
 ## 토론 질문
