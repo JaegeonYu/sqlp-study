@@ -52,8 +52,8 @@ from   (select dept_no, count(*) cnt, max(sal) max_sal from w09_emp group by dep
 where  dept_no = 7;
 @@../../common/xplan
 prompt 관찰: dept_no = 7 필터가 GROUP BY 보다 먼저(테이블을 읽는 Id 에) 적용됐나? 집계 대상은 10만 건인가 1,000건인가?
-prompt --- [4-b] 뷰를 머징하지 않고(no_merge), 조인 조건도 넣지 않음
-select /*+ leading(d) no_merge(v) */ d.dept_name, v.cnt
+prompt --- [4-b] 뷰를 머징하지 않고(no_merge), 조인 조건도 넣지 않음(no_push_pred)
+select /*+ leading(d) no_merge(v) no_push_pred(v) */ d.dept_name, v.cnt
 from   w09_dept d,
        (select dept_no, count(*) cnt from w09_emp group by dept_no) v
 where  v.dept_no = d.dept_no
@@ -68,7 +68,7 @@ and    d.region  = 3;
 @@xplan_outline
 prompt 관찰: [4-b] 는 사원 10만 건 전체를 집계했다. [4-c] 에 VIEW PUSHED PREDICATE 가 보이는가?
 prompt       뷰 내부가 부서별로 몇 번(Starts) 실행됐고 Buffers 는? Outline 의 PUSH_PRED 를 찾아보자.
-prompt       (참고: 힌트 없이 두면 옵티마이저는 [3-b] 처럼 뷰를 아예 머징해 버리기도 한다)
+prompt       (참고: no_merge 만 걸어도 23ai 옵티마이저는 비용을 따져 스스로 JPPD 를 고른다. 머징까지 허용하면 [3-b] 처럼 뷰를 아예 풀어 버린다)
 
 prompt
 prompt ===== [5] 조건절 이행 (Transitive Predicate) =====
