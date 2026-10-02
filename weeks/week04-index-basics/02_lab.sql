@@ -103,25 +103,32 @@ prompt 관찰: '%777' 은 인덱스의 어느 지점에서 스캔을 시작해�
 
 prompt
 prompt ===== [6] 부정형 조건 =====
+prompt --- [6-a] 옵티마이저에 맡김
 select count(*) from big_table where status <> 'Y';
 @@../../common/xplan
 select count(*) from big_table where status = 'N';
 @@../../common/xplan
-prompt 관찰: 값이 'Y','N' 두 개뿐이라는 "업무 지식"이 있으면 <> 를 = 로 바꿀 수 있다. Buffers 차이는?
+prompt 관찰: 둘 다 같은 계획이다. E-Rows 가 500K 인 이유는? (히스토그램이 없으면 값 2개 → 50% 로 추정. 8주차에서 다룬다)
+prompt --- [6-b] 같은 인덱스를 힌트로 강제
+select /*+ index(b w04_status_dt_ix) */ count(*) from big_table b where status <> 'Y';
+@@../../common/xplan
+select /*+ index(b w04_status_dt_ix) */ count(*) from big_table b where status = 'N';
+@@../../common/xplan
+prompt 관찰: <> 는 INDEX FULL SCAN(스캔 시작점이 없음), = 는 INDEX RANGE SCAN. 값이 'Y','N' 두 개뿐이라는 업무 지식이 있으면
+prompt       <> 를 = 로 바꿀 수 있다. Buffers 차이는? 옵티마이저가 [6-a] 에서 = 'N' 을 Range Scan 으로 고르지 못한 이유는?
 
 prompt
 prompt ===== [7] IS NULL: 단일 컬럼 인덱스에는 NULL 이 저장되지 않는다 =====
-set feedback only
-select * from w04_code where closed_dt is null;
-set feedback on
+prompt --- [7-a] 단일 컬럼 인덱스 w04_closed_ix(closed_dt) 를 힌트로 강제해도
+select /*+ index(c w04_closed_ix) */ count(*) from w04_code c where closed_dt is null;
 @@../../common/xplan
-prompt --- 해결: NOT NULL 컬럼을 뒤에 붙인 결합 인덱스 (closed_dt, id)
+prompt --- [7-b] 해결: NOT NULL 컬럼을 뒤에 붙인 결합 인덱스 (closed_dt, id)
 create index w04_closed_id_ix on w04_code (closed_dt, id);
-set feedback only
-select * from w04_code where closed_dt is null;
-set feedback on
+select count(*) from w04_code where closed_dt is null;
 @@../../common/xplan
-prompt 관찰: 결합 인덱스에서는 모든 컬럼이 NULL 인 행만 빠진다. 그래서 (closed_dt, id) 에는 closed_dt 가 NULL 인 행도 들어 있다.
+prompt 관찰: [7-a] 는 힌트를 줘도 인덱스를 쓰지 못했다. 결합 인덱스는 "모든 컬럼이 NULL" 인 행만 빠지므로
+prompt       (closed_dt, id) 에는 closed_dt 가 NULL 인 행도 들어 있다. [7-b] 의 Predicate Information 은 access 인가?
+prompt       (select * 로 바꾸면 NULL 인 1,000건이 테이블 전체에 흩어져 있어 옵티마이저가 FULL 을 고를 수 있다. 직접 확인해 보자)
 
 prompt
 prompt ===== [8] OR 조건 =====

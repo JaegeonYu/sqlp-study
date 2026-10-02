@@ -4,6 +4,10 @@
 --   제출: result.md 2번에 4문제의 Before/After Buffers 표와 근거
 @@../../common/session_init
 
+-- 02_lab.sql 에서 만든 인덱스를 지우고 setup 직후 상태에서 시작
+drop index if exists w04_closed_id_ix;
+drop index if exists w04_upper_name_fx;
+
 prompt
 prompt ===== C1 =====
 select count(*), sum(amount)
