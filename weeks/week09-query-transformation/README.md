@@ -21,11 +21,11 @@ bash scripts/run.sh weeks/week09-query-transformation/03_challenge.sql weeks/wee
 | # | 변환 | 비교 | 볼 것 |
 |---|---|---|---|
 | 1 | 서브쿼리 Unnesting | `no_unnest` vs `unnest` | FILTER의 서브쿼리 Starts, SEMI 조인으로 바뀐 뒤의 Buffers, Outline의 `UNNEST` |
-| 2 | FILTER 캐싱 | `no_unnest` + 입력값 100종 | 메인 10만 건 대비 서브쿼리 Starts |
+| 2 | FILTER 캐싱 | `no_unnest` + 입력값 100종 | 메인 10만 건 대비 서브쿼리 Starts. 이상적이면 100번이지만, 해시 충돌 때문에 그보다 많이 실행됨 |
 | 3 | 뷰 머징 | `no_merge` vs `merge` | GROUP BY가 조인 앞인지 뒤인지, 집계 대상 건수 |
-| 4 | 조건절 Pushing | 필터 pushdown / `no_push_pred` vs `push_pred` | `VIEW PUSHED PREDICATE`, 뷰 내부 Starts |
+| 4 | 조건절 Pushing | 필터 pushdown / `no_merge` vs `no_merge + push_pred` | 필터가 GROUP BY 전에 적용되는지, `VIEW PUSHED PREDICATE`, 뷰 내부 Starts |
 | 5 | 조건절 이행 | — | SQL에 없는 `E.DEPT_NO=7`이 Predicate Information에 생김 |
-| 6 | OR-Expansion | 기본 / `no_or_expand` / `use_concat` | `VW_ORE_` 뷰와 UNION ALL, 금지했을 때의 처리 방식 |
+| 6 | OR 조건 처리 | 기본 / `or_expand` / `use_concat` | 기본은 BITMAP OR, `VW_ORE_` 뷰와 UNION-ALL, CONCATENATION과 `LNNVL` |
 | 7 | 조인 제거 | 기본 vs `no_eliminate_join` | 계획에서 `W09_DEPT`가 사라지는지 |
 
 헬퍼 `xplan_outline.sql`은 `ALLSTATS LAST +ALIAS +OUTLINE` 포맷으로 출력합니다.

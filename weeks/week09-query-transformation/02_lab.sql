@@ -23,7 +23,8 @@ select /* w09_filter_cache */ count(*), sum(e.sal)
 from   w09_emp e
 where  e.dept_no in (select /*+ no_unnest */ d.dept_no from w09_dept d where d.region = 3);
 @@../../common/xplan
-prompt 관찰: 메인 쿼리는 10만 건인데 서브쿼리 Starts 는 몇 번인가? 입력값(dept_no)의 종류가 100개뿐이라는 점과 연결해 보자.
+prompt 관찰: 메인 쿼리는 10만 건인데 서브쿼리 Starts 는 몇 번인가? 입력값(dept_no)이 100종뿐이니 이상적이면 100번이다.
+prompt       실제 Starts 가 100보다 훨씬 크다면, FILTER 캐시가 해시 테이블이라 입력값이 섞여 들어올 때 충돌로 재실행되기 때문이다.
 
 prompt
 prompt ===== [3] 뷰 머징 (View Merging) =====
@@ -50,22 +51,24 @@ select *
 from   (select dept_no, count(*) cnt, max(sal) max_sal from w09_emp group by dept_no)
 where  dept_no = 7;
 @@../../common/xplan
-prompt 관찰: Predicate Information 에서 dept_no = 7 이 어느 Id 에 access 조건으로 붙었나?
-prompt --- [4-b] no_push_pred: 조인 조건을 뷰 안에 넣지 않음
-select /*+ leading(d) use_nl(v) no_push_pred(v) */ d.dept_name, v.cnt
+prompt 관찰: dept_no = 7 필터가 GROUP BY 보다 먼저(테이블을 읽는 Id 에) 적용됐나? 집계 대상은 10만 건인가 1,000건인가?
+prompt --- [4-b] 뷰를 머징하지 않고(no_merge), 조인 조건도 넣지 않음
+select /*+ leading(d) no_merge(v) */ d.dept_name, v.cnt
 from   w09_dept d,
        (select dept_no, count(*) cnt from w09_emp group by dept_no) v
 where  v.dept_no = d.dept_no
 and    d.region  = 3;
 @@../../common/xplan
-prompt --- [4-c] push_pred: 조인 조건을 뷰 안으로 (Join Predicate Pushdown)
-select /*+ leading(d) use_nl(v) push_pred(v) */ d.dept_name, v.cnt
+prompt --- [4-c] 뷰는 그대로 두고 조인 조건만 뷰 안으로 (Join Predicate Pushdown)
+select /*+ leading(d) use_nl(v) no_merge(v) push_pred(v) */ d.dept_name, v.cnt
 from   w09_dept d,
        (select dept_no, count(*) cnt from w09_emp group by dept_no) v
 where  v.dept_no = d.dept_no
 and    d.region  = 3;
 @@xplan_outline
-prompt 관찰: [4-c] 에 VIEW PUSHED PREDICATE 가 보이는가? 뷰 내부가 부서별로 몇 번(Starts) 실행됐고 Buffers 는?
+prompt 관찰: [4-b] 는 사원 10만 건 전체를 집계했다. [4-c] 에 VIEW PUSHED PREDICATE 가 보이는가?
+prompt       뷰 내부가 부서별로 몇 번(Starts) 실행됐고 Buffers 는? Outline 의 PUSH_PRED 를 찾아보자.
+prompt       (참고: 힌트 없이 두면 옵티마이저는 [3-b] 처럼 뷰를 아예 머징해 버리기도 한다)
 
 prompt
 prompt ===== [5] 조건절 이행 (Transitive Predicate) =====
@@ -78,16 +81,23 @@ prompt 관찰: SQL 에는 e.dept_no = 7 이 없다. Predicate Information 에서
 
 prompt
 prompt ===== [6] OR-Expansion =====
+set feedback only
 prompt --- [6-a] 기본(옵티마이저 판단)
 select emp_no, mgr_no, sal from w09_emp where emp_no = 77 or mgr_no = 77;
+set feedback on
 @@../../common/xplan
-prompt --- [6-b] no_or_expand
-select /*+ no_or_expand */ emp_no, mgr_no, sal from w09_emp where emp_no = 77 or mgr_no = 77;
-@@../../common/xplan
+set feedback only
+prompt --- [6-b] or_expand: 23ai 의 비용 기반 OR-Expansion
+select /*+ or_expand */ emp_no, mgr_no, sal from w09_emp where emp_no = 77 or mgr_no = 77;
+set feedback on
+@@xplan_outline
+set feedback only
 prompt --- [6-c] use_concat (책 시절 힌트)
 select /*+ use_concat */ emp_no, mgr_no, sal from w09_emp where emp_no = 77 or mgr_no = 77;
-@@xplan_outline
-prompt 관찰: OR 조건이 UNION ALL 두 갈래로 나뉘었나(VW_ORE_ 뷰, CONCATENATION)? 금지했을 때는 어떤 방식으로 처리했나?
+set feedback on
+@@../../common/xplan
+prompt 관찰: [6-a] 기본 계획은 OR 를 어떻게 처리했나(BITMAP OR: B*Tree 인덱스 두 개를 비트맵으로 바꿔 합침)?
+prompt       [6-b] 의 VW_ORE_ 뷰와 UNION-ALL, [6-c] 의 CONCATENATION 은 같은 아이디어다. 두 번째 갈래의 LNNVL 조건은 왜 필요한가?
 
 prompt
 prompt ===== [7] 조인 제거 (Join Elimination) =====
