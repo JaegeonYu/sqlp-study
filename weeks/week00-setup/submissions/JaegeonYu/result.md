@@ -11,7 +11,7 @@
 | [3] | INDEX: Buffers 154 (인덱스 21 + 테이블 133) / Reads 156 | FULL보다 약 1/122. reg_dt 순으로 저장되어 있어서 7,000건의 rowid 액세스가 133블록 안에서 끝났다 |
 | [4-a] | session logical reads 18,916 / physical reads direct 18,865 / table scan rows gotten 1,000,051 | [2]의 Buffers와 거의 같다(차이 약 48은 스냅샷 SQL의 오차). FULL 스캔은 100만 행을 모두 검사했고, 버퍼 캐시를 거치지 않는 direct path read로 읽었다 |
 | [4-b] | session logical reads 159 / table fetch by rowid 7,000 / table scan rows gotten 34 | [3]의 Buffers 154와 거의 같다. 인덱스에서 얻은 rowid로 테이블을 7,000번 찾아갔다 |
-| [5] | E-Rows 500K / A-Rows 10,000 / Buffers 18,868 | status는 값이 2개이고 히스토그램이 없어서 옵티마이저가 균등 분포로 가정했다: 1,000,000 / NDV 2 = 500,000. 실제는 1%로, 50배 과대 추정이다 |
+| [5] | E-Rows 500K / A-Rows 10,000 / NUM_DISTINCT 2 / HISTOGRAM NONE | status 통계를 size 1로 수집해서 히스토그램(값별 분포 정보)이 없다. 그래서 옵티마이저는 'Y'와 'N'이 균등 분포라고 가정하고, 선택도를 1/NUM_DISTINCT = 1/2로 계산했다. 카디널리티(E-Rows)는 1,000,000 × 1/2 = 500,000이지만 실제는 10,000건(1%)으로 50배 과대 추정이다 |
 | [6] | consistent gets 18,897 / SQL*Net roundtrips 8 / rows processed 100 | cust_id에 인덱스가 없어서 100건을 구하려고 FULL 스캔을 했다. roundtrips 8은 arraysize 기본값(15) 기준으로 100행을 약 7번 fetch한 결과이다 |
 | [7] | TKPROF FULL: query 18,868 / disk 18,865 / `direct path read` 156회<br>TKPROF INDEX: query 154 / disk 0 | TKPROF의 query = DISPLAY_CURSOR의 Buffers = AUTOTRACE의 consistent gets이다. INDEX는 앞 단계에서 읽은 블록이 캐시에 있어 disk 0이 됐지만, FULL은 매번 direct path read로 디스크에서 다시 읽었다 |
 
