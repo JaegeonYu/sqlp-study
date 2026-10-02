@@ -29,7 +29,7 @@ bash scripts/run.sh weeks/week02-perf-tools-library-cache/03_challenge.sql weeks
 | 1 | 문자형 컬럼 = 숫자 바인드 | EXPLAIN PLAN은 INDEX RANGE SCAN, 실제는 `TO_NUMBER(CUST_CODE)` 필터와 FULL 스캔 |
 | 2 | AUTOTRACE 두 옵션 | traceonly explain이 보여주는 계획은 예상과 실제 중 어느 쪽인가, statistics의 consistent gets |
 | 3 | V$SQL | executions·parse_calls, 옵티마이저 환경이 바뀌면 생기는 자식 커서 |
-| 4 | 리터럴 2,000회 vs 바인드 2,000회 | parse count (hard), parse time, Elapsed, 공유 풀에 남은 커서 수 |
+| 4 | 리터럴 2,000회 vs 바인드 2,000회 | parse count (hard), parse time, Elapsed, 공유 풀에 남은 커서 수 (CI 기준: hard 2,023 vs 2, 1.23초 vs 0.03초) |
 | 5 | `cursor_sharing=force` | `:"SYS_B_0"`로 바뀐 SQL 텍스트, hard parse 감소 |
 | 6 | `session_cached_cursors` 0 vs 50 | parse count (total)는 같고 `session cursor cache hits`만 달라진다 |
 | 7 | SQL 트레이스 | TKPROF의 `Misses in library cache during parse` |
@@ -58,8 +58,10 @@ bash scripts/run.sh weeks/week02-perf-tools-library-cache/03_challenge.sql weeks
 
 ## 책과 다른 점 (23ai)
 - **공유 풀은 CDB 전체가 공유합니다.** PDB에서 `alter system flush shared_pool`을 실행하면 그 PDB의 커서만 비워집니다.
-- **AUTOTRACE의 계획이 버전마다 다를 수 있습니다.** 최근 SQL*Plus는 AUTOTRACE 출력을 개선해 왔습니다. 실습 [2-a]의 계획이 [1-a](예상)와 [1-b](실제) 중 어느 쪽과 같은지 실제 결과로 기록하세요.
+- **AUTOTRACE `traceonly explain`은 23ai에서도 예상 계획입니다.** CI 결과에서 [2-a]는 [1-a]와 같은 INDEX RANGE SCAN이었습니다. 반면 [2-b]의 consistent gets(361)는 실제 FULL 스캔의 Buffers와 같았습니다. 한 화면 안에서 계획과 통계가 서로 다른 이야기를 하는 셈입니다.
 - **Adaptive Cursor Sharing(11g~).** 책 시절에는 바인드 피킹 때문에 "첫 실행 값으로 굳어진 계획"이 큰 문제였습니다. 11g 이후에는 실행 통계를 보고 자식 커서를 새로 만들 수 있습니다. 자세한 내용은 8주차(옵티마이저)에서 다룹니다.
+- **Free의 공유 풀은 작습니다.** CI 기준으로 리터럴 SQL 2,000개를 실행한 직후 V$SQL에 남은 커서는 약 1,000개였습니다. 나머지는 LRU로 이미 밀려났습니다. 리터럴 SQL이 다른 SQL의 커서까지 밀어내 하드 파싱을 연쇄로 일으키는 과정을 축소판으로 볼 수 있습니다.
+- **PL/SQL의 동적 SQL 커서 재사용.** `execute immediate`로 같은 텍스트를 바인드만 바꿔 반복하면 PL/SQL이 커서를 열어 둔 채 재사용합니다. 그래서 [4-b]는 parse count (total)이 2,000이 아니라 한 자릿수로 나옵니다. 파싱 자체를 줄이는 것이 가장 좋다는 결론으로 이어집니다. 실습 [6]은 이 재사용을 피하려고 DBMS_SQL로 매번 open/close합니다.
 - **`session_cached_cursors` 기본값은 50입니다.** 실습 [6]은 원래 값을 기억해 두었다가 끝나면 되돌립니다.
 
 ## 토론 질문

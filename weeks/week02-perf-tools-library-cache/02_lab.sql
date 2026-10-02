@@ -83,7 +83,8 @@ set timing off
 @@parse_end
 @@helper_sqlstat w02_bind
 prompt 관찰: parse count (hard), parse time elapsed, Elapsed 시간, V$SQL 커서 수(cursors)를 비교하자.
-prompt       같은 일을 하는데 리터럴 방식이 공유 풀(라이브러리 캐시)에 남긴 흔적은 몇 개인가?
+prompt       리터럴 커서가 2,000개보다 적게 남아 있다면, 나머지는 어디로 갔을까? (공유 풀 크기, LRU)
+prompt       [4-b]의 parse count (total) 이 2,000이 아니라 몇 번인지도 보자. PL/SQL이 같은 동적 SQL 커서를 재사용한다.
 
 prompt
 prompt ===== [5] cursor_sharing = force: 리터럴을 시스템이 바인드로 바꿔준다 =====
