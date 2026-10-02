@@ -1,0 +1,40 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Table created.
+
+
+===== 원본 SQL =====
+
+  COUNT(*) SUM(AMOUNT)
+---------- -----------
+     31000   155628500
+
+SQL_ID  dfu1tt7t7pmt7, child number 0
+-------------------------------------
+select count(*), sum(amount) from   big_table where  to_char(reg_dt,
+'YYYYMM') = '202305'
+
+Plan hash value: 599409829
+
+---------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+---------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |           |      1 |        |      1 |00:00:00.25 |   18868 |  18865 |
+|   1 |  SORT AGGREGATE    |           |      1 |      1 |      1 |00:00:00.25 |   18868 |  18865 |
+|*  2 |   TABLE ACCESS FULL| BIG_TABLE |      1 |  10000 |  31000 |00:00:00.25 |   18868 |  18865 |
+---------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter(TO_CHAR(INTERNAL_FUNCTION("REG_DT"),'YYYYMM')='202305')
+
+과제: 인덱스가 있는데 왜 쓰이지 않았는지 설명하고, 결과는 같게 유지한 채 Buffers 를 줄여라.
