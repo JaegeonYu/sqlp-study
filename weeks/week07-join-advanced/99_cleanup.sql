@@ -9,8 +9,9 @@ begin
   end loop;
 end;
 /
+drop function if exists w07_grp_rate;
+drop function if exists w07_cust_pts;
 drop function if exists w07_grp_nm;
-drop function if exists w07_cust_nm;
 drop package  if exists w07_cnt;
 drop table if exists w07_cust        purge;
 drop table if exists w07_grp         purge;

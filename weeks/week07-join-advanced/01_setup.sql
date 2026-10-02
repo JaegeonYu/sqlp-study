@@ -11,15 +11,18 @@ select level                                       as cust_id,
        'R' || lpad(ceil(level / 1000), 2, '0')     as region_cd,
        case when mod(level, 100) = 0 then 'VIP'
             when mod(level, 10)  = 0 then 'GOLD'
-            else 'NORMAL' end                      as grade
+            else 'NORMAL' end                      as grade,
+       mod(level * 13, 1000)                       as pts
 from   dual
 connect by level <= 10000;
 alter table w07_cust add constraint w07_cust_pk primary key (cust_id);
 
--- 그룹 코드 100건 (BIG_TABLE.grp_id 1..100 의 이름)
+-- 그룹 코드 100건 (BIG_TABLE.grp_id 1..100 의 이름, 할인율)
 drop table if exists w07_grp purge;
 create table w07_grp as
-select level as grp_id, 'GROUP-' || lpad(level, 3, '0') as grp_nm
+select level                          as grp_id,
+       'GROUP-' || lpad(level, 3, '0') as grp_nm,
+       mod(level * 7, 10) / 100       as disc_rate
 from   dual
 connect by level <= 100;
 alter table w07_grp add constraint w07_grp_pk primary key (grp_id);
@@ -74,23 +77,34 @@ create or replace package body w07_cnt as
   function calls return number is begin return g_calls; end;
 end w07_cnt;
 /
--- 그룹명 조회 (NDV 100)
+-- 그룹 할인율 조회 (NUMBER 반환, 입력값 NDV 100)
+create or replace function w07_grp_rate (p_grp_id number) return number is
+  l_rate number;
+begin
+  w07_cnt.g_calls := w07_cnt.g_calls + 1;
+  select disc_rate into l_rate from w07_grp where grp_id = p_grp_id;
+  return l_rate;
+exception
+  when no_data_found then return null;
+end;
+/
+-- 고객 포인트 조회 (NUMBER 반환, 입력값 NDV 10,000)
+create or replace function w07_cust_pts (p_cust_id number) return number is
+  l_pts number;
+begin
+  w07_cnt.g_calls := w07_cnt.g_calls + 1;
+  select pts into l_pts from w07_cust where cust_id = p_cust_id;
+  return l_pts;
+exception
+  when no_data_found then return null;
+end;
+/
+-- 그룹명 조회 (VARCHAR2 반환, 입력값 NDV 100) : 반환 타입에 따른 캐시 효과 비교 + 챌린지용
 create or replace function w07_grp_nm (p_grp_id number) return varchar2 is
   l_nm w07_grp.grp_nm%type;
 begin
   w07_cnt.g_calls := w07_cnt.g_calls + 1;
   select grp_nm into l_nm from w07_grp where grp_id = p_grp_id;
-  return l_nm;
-exception
-  when no_data_found then return null;
-end;
-/
--- 고객명 조회 (NDV 10,000)
-create or replace function w07_cust_nm (p_cust_id number) return varchar2 is
-  l_nm w07_cust.cust_nm%type;
-begin
-  w07_cnt.g_calls := w07_cnt.g_calls + 1;
-  select cust_nm into l_nm from w07_cust where cust_id = p_cust_id;
   return l_nm;
 exception
   when no_data_found then return null;

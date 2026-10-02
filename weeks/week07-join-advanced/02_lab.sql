@@ -3,9 +3,9 @@
 
 prompt
 prompt ===== [1] 스칼라 서브쿼리 캐싱 =====
-prompt --- [1-a] 함수 직접 호출 : 10만 건 x 그룹명(NDV 100)
+prompt --- [1-a] 함수 직접 호출 : 10만 건 x 그룹 할인율(NUMBER, 입력값 NDV 100)
 exec w07_cnt.reset
-select sum(length(w07_grp_nm(b.grp_id))) as len_sum
+select sum(w07_grp_rate(b.grp_id)) as rate_sum
 from   big_table b
 where  b.id <= 100000;
 @@../../common/xplan
@@ -13,27 +13,35 @@ select w07_cnt.calls as fn_calls from dual;
 
 prompt --- [1-b] 스칼라 서브쿼리로 감싸기 : 같은 10만 건
 exec w07_cnt.reset
+select sum((select w07_grp_rate(b.grp_id) from dual)) as rate_sum
+from   big_table b
+where  b.id <= 100000;
+@@../../common/xplan
+select w07_cnt.calls as fn_calls from dual;
+
+prompt --- [1-c] 스칼라 서브쿼리 + 입력값 종류가 많을 때 : 고객 포인트(NUMBER, NDV 10,000)
+exec w07_cnt.reset
+select sum((select w07_cust_pts(b.rnd_id) from dual)) as pts_sum
+from   big_table b
+where  b.id <= 100000;
+@@../../common/xplan
+select w07_cnt.calls as fn_calls from dual;
+
+prompt --- [1-d] 스칼라 서브쿼리 + VARCHAR2 반환 함수 : 그룹명(NDV 100)
+exec w07_cnt.reset
 select sum(length((select w07_grp_nm(b.grp_id) from dual))) as len_sum
 from   big_table b
 where  b.id <= 100000;
 @@../../common/xplan
 select w07_cnt.calls as fn_calls from dual;
 
-prompt --- [1-c] 스칼라 서브쿼리 + 입력값 종류가 많을 때 : 고객명(NDV 10,000)
-exec w07_cnt.reset
-select sum(length((select w07_cust_nm(b.rnd_id) from dual))) as len_sum
-from   big_table b
-where  b.id <= 100000;
-@@../../common/xplan
-select w07_cnt.calls as fn_calls from dual;
-
-prompt --- [1-d] 함수 대신 조인
-select sum(length(g.grp_nm)) as len_sum
+prompt --- [1-e] 함수 대신 조인
+select sum(g.disc_rate) as rate_sum
 from   big_table b, w07_grp g
 where  b.id <= 100000
 and    g.grp_id = b.grp_id;
 @@../../common/xplan
-prompt 관찰: fn_calls 는 [1-a] 100,000 → [1-b] 약 100 → [1-c] 몇 번? A-Time 차이는? 캐시가 효과를 보는 조건은 무엇인가?
+prompt 관찰: 각 단계의 fn_calls 와 FAST DUAL 의 Starts, A-Time. [1-b]와 [1-d]는 입력값 종류가 같은데 왜 호출 횟수가 다를까? (반환 타입 크기와 캐시 크기)
 
 prompt
 prompt ===== [2] Semi 조인 : 2023-01-01 에 주문한 고객 수 =====
@@ -49,14 +57,22 @@ select count(*)
 from   w07_cust c
 where  c.cust_id in (select b.rnd_id from big_table b where b.reg_dt = date '2023-01-01');
 @@../../common/xplan
-prompt --- [2-c] 서브쿼리 Unnesting 을 막으면 (FILTER)
+prompt --- [2-c] Hash Semi 조인으로 고정
+select count(*)
+from   w07_cust c
+where  exists (select /*+ unnest hash_sj */ 1 from big_table b
+               where  b.rnd_id = c.cust_id
+               and    b.reg_dt = date '2023-01-01');
+@@../../common/xplan
+prompt --- [2-d] 서브쿼리 Unnesting 을 막으면 (FILTER)
 select count(*)
 from   w07_cust c
 where  exists (select /*+ no_unnest */ 1 from big_table b
                where  b.rnd_id = c.cust_id
                and    b.reg_dt = date '2023-01-01');
 @@../../common/xplan
-prompt 관찰: [2-a]의 조인 방식(SEMI)은? [2-c] FILTER 아래 서브쿼리의 Starts 는 고객 수(10,000)와 같은가? 다르다면 왜인가?
+prompt 관찰: [2-a]는 SEMI 대신 SORT UNIQUE + 일반 조인으로 바뀌었는가? 서브쿼리 쪽을 먼저 중복 제거하면 왜 Semi 조인이 필요 없어지는가?
+prompt       [2-c]의 HASH JOIN SEMI(또는 RIGHT SEMI) Build 쪽은? [2-d] FILTER 아래 서브쿼리 Starts 는 고객 수(10,000)와 같은가?
 
 prompt
 prompt ===== [3] Anti 조인과 NOT IN 의 NULL 함정 =====
