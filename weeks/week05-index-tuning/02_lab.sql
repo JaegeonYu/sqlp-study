@@ -45,14 +45,21 @@ from   big_table b
 where  grp_id = 7
 and    reg_dt between date '2023-01-01' and date '2023-03-31';
 @@../../common/xplan
-prompt --- [4-b] (reg_dt, grp_id) : 범위 컬럼이 선두
+prompt --- [4-b] (reg_dt, grp_id) : 범위 컬럼이 선두, Range Scan 강제
+select /*+ index_rs_asc(b w05_dt_grp_ix) */ count(*)
+from   big_table b
+where  grp_id = 7
+and    reg_dt between date '2023-01-01' and date '2023-03-31';
+@@../../common/xplan
+prompt --- [4-c] (reg_dt, grp_id) : 옵티마이저에 인덱스만 지정
 select /*+ index(b w05_dt_grp_ix) */ count(*)
 from   big_table b
 where  grp_id = 7
 and    reg_dt between date '2023-01-01' and date '2023-03-31';
 @@../../common/xplan
-prompt 관찰: 결과는 같은 900건. INDEX RANGE SCAN 의 Buffers 차이는? [4-b] 의 Predicate Information 에서
-prompt       grp_id = 7 이 access 와 filter 중 어디에 나타나나? 범위 조건 뒤의 컬럼은 스캔 범위를 줄이지 못한다.
+prompt 관찰: 결과는 같은 900건. [4-a] 와 [4-b] 의 Buffers 차이는? [4-b] 의 Predicate Information 에서 grp_id = 7 은
+prompt       access 범위를 줄이지 못하고 filter 로만 쓰인다(범위 조건 뒤의 컬럼). [4-c] 에서 옵티마이저는 무엇을 골랐나?
+prompt       (reg_dt 값마다 grp_id = 7 위치로 "점프"하는 Skip Scan. 그래도 [4-a] 보다 많이 읽는다)
 
 prompt
 prompt ===== [5] 커버링 인덱스: 테이블 액세스 제거 =====
@@ -89,7 +96,7 @@ where  grp_id = 7
 order  by reg_dt desc
 fetch  first 10 rows only;
 @@../../common/xplan
-prompt --- [6-c] (reg_dt, grp_id) 역순 → 정렬 컬럼이 선두, 조건 컬럼은 filter
+prompt --- [6-c] (reg_dt, grp_id) 역순 → 정렬 컬럼이 선두, 조건 컬럼은 두 번째
 select /*+ index_desc(b w05_dt_grp_ix) */ id, reg_dt, amount
 from   big_table b
 where  grp_id = 7

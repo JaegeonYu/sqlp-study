@@ -31,7 +31,7 @@ bash scripts/run.sh weeks/week05-index-tuning/03_challenge.sql weeks/week05-inde
 | 1 | CF 조회 | `clustering_factor` vs 테이블 blocks / num_rows |
 | 2 | 같은 1,000건, 다른 CF | INDEX 단계 Buffers는 비슷, TABLE ACCESS 단계가 크게 다름 |
 | 3 | 손익분기점 (`breakeven.sql`) | 0.1~20% 구간에서 rnd_ix / FULL / cust_ix의 LIO와 ms |
-| 4 | 결합 인덱스 순서 | `(grp_id, reg_dt)` vs `(reg_dt, grp_id)`의 INDEX RANGE SCAN Buffers, access/filter |
+| 4 | 결합 인덱스 순서 | `(grp_id, reg_dt)` vs `(reg_dt, grp_id)` Range Scan의 Buffers와 access/filter. 옵티마이저가 고른 Skip Scan |
 | 5 | 커버링 인덱스 | `(rnd_id, amount)` 추가 후 TABLE ACCESS 제거 |
 | 6 | ORDER BY 생략 + STOPKEY | 인덱스 역순 10건 vs FULL+SORT, 정렬 컬럼 선두 인덱스 |
 | 7 | IOT | 힙 + PK 인덱스 vs IOT의 Buffers |
