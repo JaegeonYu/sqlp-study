@@ -74,6 +74,7 @@ BUSAN 지역 VIP 고객의 2023년 1분기 고객별 주문 집계입니다. 원
 
 ## 제출
 `weeks/week06-join-basics/submissions/<github-id>/`
+- `concepts.md`: 핵심 개념 3개(자기 말로 + 실습 수치 연결)와 필기 문제 2개 ([templates/concepts.md](../../templates/concepts.md))
 - `result.md`
 - `lab.txt`
 - `challenge.txt`

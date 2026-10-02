@@ -67,6 +67,7 @@ ms는 캐시 상태에 따라 달라집니다. 판단은 LIO 위주로 하고, m
 
 ## 제출
 `weeks/week05-index-tuning/submissions/<github-id>/`
+- `concepts.md`: 핵심 개념 3개(자기 말로 + 실습 수치 연결)와 필기 문제 2개 ([templates/concepts.md](../../templates/concepts.md))
 - `result.md` (필기 답 포함)
 - `lab.txt`
 - `challenge.txt`

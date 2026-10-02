@@ -79,6 +79,7 @@ bash scripts/run.sh weeks/week07-join-advanced/03_challenge.sql weeks/week07-joi
 
 ## 제출
 `weeks/week07-join-advanced/submissions/<github-id>/`
+- `concepts.md`: 핵심 개념 3개(자기 말로 + 실습 수치 연결)와 필기 문제 2개 ([templates/concepts.md](../../templates/concepts.md))
 - `result.md`
 - `lab.txt`
 - `challenge.txt`

@@ -55,6 +55,7 @@ bash scripts/run.sh weeks/week10-sort/03_challenge.sql weeks/week10-sort/submiss
 
 ## 제출
 `weeks/week10-sort/submissions/<github-id>/`
+- `concepts.md`: 핵심 개념 3개(자기 말로 + 실습 수치 연결)와 필기 문제 2개 ([templates/concepts.md](../../templates/concepts.md))
 - `result.md`
 - `lab.txt`
 - `challenge.txt`
