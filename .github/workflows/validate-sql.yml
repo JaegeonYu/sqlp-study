@@ -1,28 +1,67 @@
 name: validate-sql
 
 # 실습 스크립트가 실제 Oracle 23ai Free에서 오류 없이 도는지 검증
+#
+# smoke 는 main 브랜치 보호의 "필수 체크"다. 필수 체크는 반드시 결과를 보고해야 하므로
+# 워크플로 단위 paths 필터를 쓰지 않고, changes job 이 SQL·스크립트 변경 여부를 판단한다.
+#   - 변경 있음 → smoke 가 Oracle을 띄워 전 주차 실행 (실패하면 머지 불가)
+#   - 변경 없음 → smoke 는 skipped (GitHub은 조건부 skip 을 성공으로 처리 → 제출 PR은 바로 통과)
 on:
   push:
     branches: [main]
-    paths:
-      - "docker/**"
-      - "common/**"
-      - "scripts/**"
-      - "weeks/*/*.sql"
-      - ".github/workflows/validate-sql.yml"
   pull_request:
-    paths:
-      - "docker/**"
-      - "common/**"
-      - "scripts/**"
-      - "weeks/*/*.sql"
-      - ".github/workflows/validate-sql.yml"
   workflow_dispatch:
 
 jobs:
-  smoke:
+  changes:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    outputs:
+      sql: ${{ steps.diff.outputs.sql }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        name: Detect SQL / script changes
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          case "$EVENT" in
+            pull_request) range="$PR_BASE $PR_HEAD" ;;
+            push)
+              if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
+                range=""
+              else
+                range="$PUSH_BEFORE $PUSH_AFTER"
+              fi ;;
+            *) range="" ;;
+          esac
+
+          if [ -z "$range" ]; then
+            echo "전체 검증 (이벤트: $EVENT)"
+            echo "sql=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files="$(git diff --name-only $range)"
+          echo "$files"
+          if grep -qE '^(docker/|common/|scripts/|weeks/[^/]+/[^/]+\.sql$|\.github/workflows/validate-sql\.yml$)' <<< "$files"; then
+            echo "sql=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "SQL·스크립트 변경 없음 → smoke 생략"
+            echo "sql=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  smoke:
+    needs: changes
+    if: needs.changes.outputs.sql == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 

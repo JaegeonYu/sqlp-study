@@ -35,8 +35,8 @@ git push -u origin week01/<github-id>
 - Settings → Collaborators: 스터디원을 초대합니다 (Write 권한).
 - Settings → Branches → `main` 보호 규칙:
   - Require a pull request before merging (Required approvals: 1)
-  - Require status checks: `check-submission / check`
-  - `validate-sql / smoke`는 SQL 파일이 바뀐 PR에서만 돌기 때문에 필수 체크로 걸지 않습니다. 걸면 제출 PR이 체크 대기 상태로 멈춥니다. 주차 스크립트 PR에서는 이 체크가 초록색인지 직접 확인하고 머지합니다.
+  - Require status checks: `check`(check-submission), `smoke`(validate-sql)
+  - `smoke`는 SQL·스크립트가 바뀐 PR에서만 실제 Oracle을 띄워 전 주차를 실행합니다. 바뀌지 않은 PR(제출 PR)에서는 skipped로 끝나고, GitHub은 이를 성공으로 처리합니다. 그래서 스크립트가 깨진 PR은 머지되지 않고, 제출 PR은 바로 통과합니다.
 - Settings → General → Pull Requests: Squash merge만 허용합니다.
 
 ## 주차 스크립트 작성 규칙 (진행자)
@@ -44,4 +44,6 @@ git push -u origin week01/<github-id>
 - 모든 SQL 스크립트는 첫 줄에서 `@@../../common/session_init`을 호출합니다.
 - 다시 실행해도 같은 결과가 나와야 합니다. `drop ... if exists`와 `create ... if not exists`를 씁니다.
 - `BIG_TABLE`에는 PK만 남겨 둡니다. 주차 인덱스는 `wNN_` 접두어를 붙이고 `99_cleanup.sql`에서 지웁니다.
-- 출력 줄이 `ORA-`, `SP2-`로 시작하지 않아야 합니다. CI가 이런 줄을 오류로 판단합니다.
+- 출력 줄이 `ORA-`, `SP2-`, `PLS-`로 시작하지 않아야 합니다. CI가 이런 줄을 오류로 판단합니다. 의도적으로 오류를 보여주는 실습은 PL/SQL 예외 처리로 감싸서, 메시지 앞에 다른 글자가 오도록 출력합니다.
+- `BIG_TABLE`의 데이터를 바꾸는 실습은 반드시 `rollback`합니다. 통계를 바꾸는 실습(히스토그램 등)은 `99_cleanup.sql`에서 `method_opt => 'for all columns size 1'`로 다시 수집해 원래대로 돌려놓습니다. CI는 전 주차를 한 DB에서 순서대로 실행하므로, 앞 주차의 흔적이 다음 주차 결과를 바꾸면 안 됩니다.
+- 세션 파라미터를 바꾸는 실습은 해당 단계가 끝나면 원래 값으로 되돌립니다.
