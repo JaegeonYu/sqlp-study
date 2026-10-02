@@ -21,8 +21,8 @@ bash scripts/run.sh weeks/week08-optimizer/99_cleanup.sql   # BIG_TABLE 통계 �
 | # | 내용 | 볼 것 |
 |---|---|---|
 | 1 | 컬럼 통계 | `user_tab_col_statistics`의 NUM_DISTINCT, DENSITY, HISTOGRAM |
-| 2 | 히스토그램 없음 | `state='WAIT'`(1%)의 E-Rows가 50%(100K)로 추정되고, 그래서 FULL을 고름 |
-| 3 | Frequency 히스토그램 | `user_histograms`의 누적 건수. E-Rows 2,000으로 맞아지면서 INDEX RANGE SCAN으로 바뀜 |
+| 2 | 히스토그램 없음 | `state='WAIT'`(500건)의 E-Rows가 50%(100K)로 추정되고, 그래서 FULL을 고름 |
+| 3 | Frequency 히스토그램 | `user_histograms`의 누적 건수. E-Rows 500으로 맞아지면서 INDEX RANGE SCAN으로 바뀜 |
 | 4 | BIG_TABLE.status | E-Rows는 맞아져도 계획은 그대로일 수 있음. 데이터가 흩어진 정도(클러스터링)가 결정 |
 | 5 | 범위 선택도 | `between`의 추정 정확도, 최대값을 벗어난 범위 조건의 E-Rows |
 | 6 | 컬럼 상관관계 | 독립 가정 때문에 E-Rows 1 vs 실제 100. 확장 통계를 수집한 뒤의 E-Rows |

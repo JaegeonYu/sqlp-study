@@ -5,11 +5,11 @@
 -- 챌린지용: rnd_id 는 무작위 저장 → 인덱스로 읽으면 행마다 다른 블록
 create index if not exists w08_rnd_ix on big_table (rnd_id);
 
--- 주문 20만 건. state 는 'DONE' 99% / 'WAIT' 1%, 'WAIT' 은 테이블 끝에 몰려 있다(최근 주문).
+-- 주문 20만 건. state 는 'DONE' 199,500건 / 'WAIT' 500건, 'WAIT' 은 테이블 끝에 몰려 있다(최근 주문).
 drop table if exists w08_orders purge;
 create table w08_orders as
 select level                                              as ord_id,
-       case when level > 198000 then 'WAIT' else 'DONE' end as state,
+       case when level > 199500 then 'WAIT' else 'DONE' end as state,
        date '2024-01-01' + trunc((level - 1) / 1000)      as ord_dt,
        mod(level * 13, 100000)                            as amt,
        rpad('o', 80, 'o')                                 as pad

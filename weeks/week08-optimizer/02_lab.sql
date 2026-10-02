@@ -16,11 +16,11 @@ order  by column_name;
 prompt 관찰: status 의 NUM_DISTINCT=2, HISTOGRAM=NONE. 이 정보만으로 status = 'N' 의 건수를 어떻게 추정할까?
 
 prompt
-prompt ===== [2] 히스토그램 없음: 'WAIT'(1%)를 50%로 착각 =====
+prompt ===== [2] 히스토그램 없음: 'WAIT'(500건)를 50%로 착각 =====
 exec dbms_stats.gather_table_stats(user, 'W08_ORDERS', method_opt => 'for all columns size 1', no_invalidate => false)
 select sum(amt) from w08_orders where state = 'WAIT';
 @@../../common/xplan
-prompt 관찰: E-Rows 는 100K(=20만/NDV 2), A-Rows 는 2,000. 인덱스가 있는데 FULL 을 고른 이유는?
+prompt 관찰: E-Rows 는 100K(=20만/NDV 2), A-Rows 는 500. 인덱스가 있는데 FULL 을 고른 이유는?
 
 prompt
 prompt ===== [3] 도수분포(Frequency) 히스토그램 수집 후 =====
@@ -86,14 +86,17 @@ prompt --- [7-a] 첫 실행 'WAIT' (하드 파싱 → 'WAIT' 를 엿보고 계�
 exec :st := 'WAIT'
 select /* w08_acs */ sum(amt) from w08_orders where state = :st;
 @@../../common/xplan
-prompt --- [7-b] 'DONE' (같은 커서 재사용)
+prompt --- [7-b] 'DONE' 1회차 (같은 커서 재사용)
 exec :st := 'DONE'
 select /* w08_acs */ sum(amt) from w08_orders where state = :st;
 @@../../common/xplan
-prompt --- [7-c] 'DONE' 한 번 더
+prompt --- [7-c] 'DONE' 2회차
 select /* w08_acs */ sum(amt) from w08_orders where state = :st;
 @@../../common/xplan
-prompt --- [7-d] 'WAIT' 다시
+prompt --- [7-d] 'DONE' 3회차
+select /* w08_acs */ sum(amt) from w08_orders where state = :st;
+@@../../common/xplan
+prompt --- [7-e] 'WAIT' 다시
 exec :st := 'WAIT'
 select /* w08_acs */ sum(amt) from w08_orders where state = :st;
 @@../../common/xplan
@@ -102,7 +105,8 @@ select child_number, executions, buffer_gets, plan_hash_value,
 from   v$sql
 where  sql_text like 'select /* w08_acs */%'
 order  by child_number;
-prompt 관찰: [7-b] 는 'WAIT' 용 계획으로 'DONE' 19.8만 건을 처리했다(Buffers). 몇 번째 실행부터 새 child 커서가 생기는가?
+prompt 관찰: [7-b] 는 'WAIT' 용 계획으로 'DONE' 19.95만 건을 처리했다(Buffers). 몇 번째 실행부터 새 child 커서가 생기는가?
+prompt       IS_SHAREABLE = N 인 child 는 무엇을 의미할까?
 
 prompt
 prompt ===== [8] 통계가 없는 테이블: 동적 샘플링 =====
