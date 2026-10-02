@@ -1,4 +1,6 @@
 docker/.env
+# Claude Code 병렬 작업용 임시 worktree (프로젝트 설정 .claude/settings.json 등은 커밋 가능)
+.claude/worktrees/
 *.prf
 *.trc
 .DS_Store
