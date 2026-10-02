@@ -24,7 +24,7 @@ bash scripts/run.sh weeks/week10-sort/03_challenge.sql weeks/week10-sort/submiss
 | 2 | 메모리 vs 디스크 소트 | `sort_area_size` 64KB로 줄였을 때 Used-Tmp, `sorts (disk)`, `physical reads direct`, A-Time |
 | 3 | 인덱스로 소트 생략 | SORT ORDER BY가 사라지는지, MIN/MAX와 Top-N(COUNT STOPKEY)의 Buffers |
 | 4 | Top-N 소트 | `fetch first`, `rownum`, 최적화를 막은 `rn + 0`이 같은 10건을 구할 때 Used-Mem 차이 |
-| 5 | 페이징 | 1페이지 vs 400페이지 vs 키 기반 페이징에서 인덱스 단계의 A-Rows와 Buffers |
+| 5 | 페이징 | 1페이지 vs 400페이지 vs 키 기반 페이징에서 테이블 액세스 단계의 A-Rows와 Buffers |
 | 6 | 불필요한 소트 제거 | union vs union all, distinct 조인 vs exists |
 
 ### 소트 관련 컬럼 읽는 법
@@ -43,9 +43,10 @@ bash scripts/run.sh weeks/week10-sort/03_challenge.sql weeks/week10-sort/submiss
 
 ## 책과 다른 점 (23ai)
 - **HASH GROUP BY / HASH UNIQUE (10gR2~):** `group by`와 `distinct`는 기본적으로 해시 방식으로 처리되어 결과가 정렬되지 않습니다. 정렬된 결과가 필요하면 반드시 `order by`를 써야 합니다. 그룹핑 결과가 저절로 정렬된다는 말은 옛날 이야기입니다.
-- **`fetch first N rows only` (12c~):** 내부적으로 `row_number()`로 바뀌어 WINDOW SORT PUSHED RANK로 처리됩니다. `rownum` 방식(SORT ORDER BY STOPKEY)과 실행계획 모양은 다르지만 Top-N 원리는 같습니다.
+- **`fetch first N rows only` (12c~):** 12c에서는 내부적으로 `row_number()`로 바뀌어 WINDOW SORT PUSHED RANK로 처리되었습니다. 이 환경(23ai)에서 실습 [4-a]를 실행하면 `rownum` 방식과 똑같이 **SORT ORDER BY STOPKEY**(Used-Mem 2KB)로 처리됩니다. 반면 `row_number()`에 `rn + 0`처럼 Top-N 최적화를 막으면 100만 건을 모두 정렬해 Used-Mem이 약 25MB까지 커집니다.
 - **자동 PGA 관리:** 실습 [2-b]처럼 `workarea_size_policy=manual`로 바꿔야 책에 나오는 `sort_area_size` 기반 동작을 볼 수 있습니다. Free 에디션은 PGA 크기 자체가 제한되어 있어서, [2-a]의 자동 관리 결과도 운영 DB와 다를 수 있습니다.
-- **TABLE ACCESS BY INDEX ROWID BATCHED:** 12c부터 테이블 랜덤 액세스를 모아서 처리하는 BATCHED 방식이 생겼습니다. 이 방식을 쓰면 인덱스 순서와 결과 순서가 어긋날 수 있다고 판단될 때, 옵티마이저는 소트를 생략하지 않을 수 있습니다. 소트 생략을 기대했는데 SORT가 보이면 BATCHED 여부를 확인하세요.
+- **TABLE ACCESS BY INDEX ROWID BATCHED:** 12c부터 테이블 랜덤 액세스를 모아서 처리하는 BATCHED 방식이 생겼습니다. 이 방식에서는 인덱스 순서와 결과 순서가 어긋날 수 있어서, 옵티마이저가 소트를 생략하지 않기도 합니다. 실습 [5]는 `no_batch_table_access_by_rowid` 힌트로 책과 같은 방식(일반 ROWID 액세스)을 씁니다. 소트 생략을 기대했는데 SORT가 보이면 BATCHED 여부를 확인하세요.
+- **Serial Direct Path Read:** 이 환경에서는 BIG_TABLE FULL 스캔이 매번 `Reads ≈ Buffers`(약 18,865블록)로 나옵니다. 버퍼 캐시를 거치지 않고 직접 읽기 때문입니다(week01 [4] 참고).
 
 ## 토론 질문
 1. `order by`가 있는 SQL에서 인덱스로 소트를 생략하려면 인덱스 컬럼 순서와 WHERE 조건이 어떤 관계여야 할까? (`=` 조건 컬럼 + 정렬 컬럼)

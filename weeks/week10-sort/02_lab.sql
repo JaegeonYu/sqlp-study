@@ -147,7 +147,7 @@ prompt 관찰: 3-b 에서 SORT ORDER BY 가 사라졌는가? 3-c, 3-d 의 Buffer
 
 prompt
 prompt ===== [4] Top-N 소트 vs 전체 소트 (인덱스 없는 정렬 컬럼) =====
-prompt --- [4-a] Top-N: fetch first → WINDOW SORT PUSHED RANK
+prompt --- [4-a] Top-N: fetch first (23ai 는 rownum 방식으로 변환해 SORT ORDER BY STOPKEY 로 처리)
 select /*+ full(b) */ id, rnd_id
 from   big_table b
 order  by rnd_id desc, id
@@ -171,10 +171,11 @@ prompt 관찰: 결과는 똑같이 10건인데 Used-Mem 차이는? Top-N 소트�
 
 prompt
 prompt ===== [5] 페이징: 뒤 페이지로 갈수록 느려진다 =====
+prompt     (reg_dt 는 인덱스에 없는 컬럼이라 행마다 테이블 랜덤 액세스가 일어난다)
 prompt --- [5-a] 1페이지 (1~20번째)
-select id, amount
+select id, amount, reg_dt
 from  (select rownum as rn, a.*
-       from  (select /*+ index(b w10_grp_amt_ix) */ id, amount
+       from  (select /*+ index(b w10_grp_amt_ix) no_batch_table_access_by_rowid(b) */ id, amount, reg_dt
               from   big_table b
               where  grp_id = 7
               order  by amount, id) a
@@ -183,9 +184,9 @@ where  rn >= 1;
 @@../../common/xplan
 prompt --- [5-b] 400페이지 (7,981~8,000번째)
 set feedback only
-select id, amount
+select id, amount, reg_dt
 from  (select rownum as rn, a.*
-       from  (select /*+ index(b w10_grp_amt_ix) */ id, amount
+       from  (select /*+ index(b w10_grp_amt_ix) no_batch_table_access_by_rowid(b) */ id, amount, reg_dt
               from   big_table b
               where  grp_id = 7
               order  by amount, id) a
@@ -206,7 +207,7 @@ from  (select rownum as rn, a.*
 where  rn = 7980;
 set feedback only
 select *
-from  (select /*+ index(b w10_grp_amt_ix) */ id, amount
+from  (select /*+ index(b w10_grp_amt_ix) no_batch_table_access_by_rowid(b) */ id, amount, reg_dt
        from   big_table b
        where  grp_id = 7
        and    amount >= &last_amt
@@ -215,11 +216,12 @@ from  (select /*+ index(b w10_grp_amt_ix) */ id, amount
 where  rownum <= 20;
 set feedback on
 @@../../common/xplan
-prompt 관찰: 5-a, 5-b, 5-c 의 인덱스 단계 A-Rows 와 Buffers 를 비교하라. 5-b 는 버릴 7,980건을 왜 읽어야 하나? 5-c 의 조건이 인덱스 액세스 조건으로 쓰였는지 Predicate 정보도 확인하라.
+prompt 관찰: 5-a, 5-b, 5-c 의 TABLE ACCESS BY INDEX ROWID 단계 A-Rows 와 Buffers 를 비교하라. 5-b 는 버릴 7,980건까지 왜 테이블을 읽어야 하나?
+prompt       5-c 의 조건이 인덱스 액세스 조건(access)으로 쓰였는지 Predicate 정보도 확인하라.
 
 prompt
 prompt ===== [6] 불필요한 소트 제거: union vs union all, distinct vs exists =====
-prompt --- [6-a] union: 두 집합이 겹치지 않는데도 중복 제거 소트
+prompt --- [6-a] union: 두 집합이 겹치지 않는데도 중복 제거
 set feedback only
 select id from big_table where grp_id = 1
 union
@@ -233,12 +235,12 @@ union all
 select id from big_table where grp_id = 2;
 set feedback on
 @@../../common/xplan
-prompt --- [6-c] 조인 후 distinct: 조건에 맞는 행을 모두 읽고 중복 제거
+prompt --- [6-c] 조인 후 distinct: 조건에 맞는 50만 건을 모두 읽고 중복 제거
 set feedback only
 select /*+ leading(g) use_nl(b) index(b w10_grp_amt_ix) */ distinct g.grp_id, g.grp_name
 from   w10_grp g, big_table b
 where  b.grp_id = g.grp_id
-and    b.amount < 50;
+and    b.amount < 5000;
 set feedback on
 @@../../common/xplan
 prompt --- [6-d] exists: 그룹마다 첫 건만 찾으면 멈춤
@@ -248,7 +250,7 @@ from   w10_grp g
 where  exists (select /*+ no_unnest index(b w10_grp_amt_ix) */ 1
                from   big_table b
                where  b.grp_id = g.grp_id
-               and    b.amount < 50);
+               and    b.amount < 5000);
 set feedback on
 @@../../common/xplan
-prompt 관찰: 6-a 와 6-b 의 소트 오퍼레이션, Used-Mem 차이는? 6-c 와 6-d 에서 big_table 인덱스 단계의 A-Rows 와 Buffers 는 몇 배 차이 나는가?
+prompt 관찰: 6-a 의 HASH UNIQUE 와 Used-Mem 이 6-b 에서 사라졌는가? 6-c 와 6-d 에서 big_table 인덱스 단계의 A-Rows 와 Buffers 는 몇 배 차이 나는가?
