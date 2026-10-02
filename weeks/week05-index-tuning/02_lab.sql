@@ -46,7 +46,7 @@ where  grp_id = 7
 and    reg_dt between date '2023-01-01' and date '2023-03-31';
 @@../../common/xplan
 prompt --- [4-b] (reg_dt, grp_id) : 범위 컬럼이 선두, Range Scan 강제
-select /*+ index_rs_asc(b w05_dt_grp_ix) */ count(*)
+select /*+ index_rs_asc(b w05_dt_grp_ix) no_index_ss(b w05_dt_grp_ix) */ count(*)
 from   big_table b
 where  grp_id = 7
 and    reg_dt between date '2023-01-01' and date '2023-03-31';
