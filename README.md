@@ -16,7 +16,7 @@ bash scripts/wait-db.sh
 bash scripts/run.sh weeks/week00-setup/01_setup.sql
 bash scripts/run.sh weeks/week00-setup/02_lab.sql
 ```
-자세한 내용은 [docs/environment.md](docs/environment.md)(설치·접속·트러블슈팅)와 [docs/contributing.md](docs/contributing.md)(제출·리뷰 규칙)에 있습니다.
+자세한 내용은 [docs/environment.md](docs/environment.md)(설치·접속·트러블슈팅), [docs/contributing.md](docs/contributing.md)(제출·리뷰 규칙), [docs/weekly-guide.md](docs/weekly-guide.md)(주차별 진행 방법·AI 활용 규칙)에 있습니다.
 
 ## 커리큘럼
 | 주 | 날짜 | 책 | 주제 | 실습 핵심 | 발표 | 리뷰 순번 |
