@@ -121,7 +121,8 @@ where  b.id <= 100000;
 set timing off
 @@stat_end
 prompt 관찰: 세 방식의 결과는 같은가? recursive calls 와 Elapsed 를 비교하자.
-prompt       [4-b]의 recursive calls 가 100 근처라면, grp_id 가 100가지뿐이라는 사실과 어떻게 연결되나?
+prompt       grp_id 는 100가지뿐인데 [4-b]의 recursive calls 는 왜 100 근처까지 줄지 않았을까?
+prompt       (스칼라 서브쿼리 캐시는 해시 테이블이다. 버킷이 충돌하면 그 값은 캐싱되지 않는다)
 
 prompt
 prompt ===== [5] 멀티 블록 읽기: db_file_multiblock_read_count =====

@@ -26,10 +26,10 @@ bash scripts/run.sh weeks/week03-db-call-io/03_challenge.sql weeks/week03-db-cal
 ## 실습 (`02_lab.sql`)
 | # | 내용 | 볼 것 |
 |---|---|---|
-| 1 | arraysize 2 / 15 / 100 / 1000 | SQL*Net roundtrips ≈ 건수 / arraysize, consistent gets도 함께 감소 |
+| 1 | arraysize 2 / 15 / 100 / 1000 | SQL*Net roundtrips ≈ 건수 / arraysize, consistent gets도 함께 감소 (CI 기준: 10,115 → 228) |
 | 2 | INSERT 1만 건: 한 건씩+매번 커밋 / FORALL / INSERT…SELECT | execute count, recursive calls, user commits, redo size, Elapsed |
 | 3 | 첫 10건: 인덱스 순서 vs 전체 정렬 | SORT 유무, STOPKEY 단계의 A-Rows·Buffers |
-| 4 | 사용자 함수 10만 회 / 스칼라 서브쿼리 / 조인 | recursive calls, Elapsed |
+| 4 | 사용자 함수 10만 회 / 스칼라 서브쿼리 / 조인 | recursive calls, Elapsed (CI 기준: 100,332 / 70,031 / 12회) |
 | 5 | `db_file_multiblock_read_count` 1 vs 128 | physical reads(블록 수)와 physical read total IO requests(요청 횟수) |
 
 ## Call 정리
@@ -48,9 +48,9 @@ PL/SQL 루프는 DB 안에서 돌기 때문에 `user calls`가 거의 늘지 않
 - result.md에 Before/After의 `execute count`, `recursive calls`, `redo size`, Elapsed, 검증 쿼리 결과를 적습니다.
 
 ## 책과 다른 점 (23ai)
-- **`fetch first N rows only`(12c~).** 책 시절에는 `rownum <= N`을 인라인 뷰 바깥에 두는 방식으로 썼습니다. 실행계획에는 `COUNT STOPKEY` 대신 `WINDOW NOSORT STOPKEY` / `WINDOW SORT PUSHED RANK`가 보일 수 있습니다. 두 방식의 계획을 직접 비교해 보세요.
-- **Serial Direct Path Read(11g~).** 실습 [5]의 테이블은 버퍼 캐시를 거치도록 일부러 작게(약 1,000블록) 만들었습니다. 그래도 `physical reads direct`가 나온다면 그 결과를 기록해 주세요.
-- **스칼라 서브쿼리 캐시 크기.** 캐시 크기는 버전과 파라미터에 따라 다릅니다. 입력 값의 종류(NDV)가 캐시보다 많으면 효과가 줄어듭니다. 실습 [4-b]의 recursive calls로 확인합니다.
+- **`fetch first N rows only`(12c~).** 책 시절에는 `rownum <= N`을 인라인 뷰 바깥에 두는 방식으로 썼습니다. 23ai는 `fetch first`를 내부에서 ROWNUM 방식으로 바꿔서, 실행계획에 책과 같은 `COUNT STOPKEY`가 나옵니다(CI 기준 Buffers 6 vs 18,868). 정렬이 필요한 [3-b]에는 `SORT ORDER BY STOPKEY`가 나옵니다. 상위 10건만 메모리에 유지하는 Top-N 소트이고, 10주차에서 다룹니다.
+- **Serial Direct Path Read(11g~).** 실습 [5]의 테이블은 버퍼 캐시를 거치도록 일부러 작게(965블록) 만들었습니다. CI에서는 `physical reads direct` 없이 버퍼 캐시로 읽혔고, I/O 요청 횟수는 MBRC=1에서 942회, MBRC=128에서 24회였습니다.
+- **스칼라 서브쿼리 캐싱은 생각보다 덜 줄어듭니다.** CI 기준으로 입력 값이 100가지뿐인데도 함수 호출은 100,000회에서 약 70,000회로만 줄었습니다. 캐시는 해시 테이블이라서, 버킷이 충돌하는 값은 캐싱되지 않고 매번 실행됩니다. 캐시 크기도 버전과 숨은 파라미터에 따라 다릅니다. 결국 이 실습에서 확실하게 효과를 낸 방법은 **조인([4-c]: recursive calls 12, 0.05초)**이었습니다. 이 결과를 "스칼라 서브쿼리 캐싱을 믿어도 되는가"의 토론 재료로 씁니다.
 - **PL/SQL 커서 FOR 루프의 자동 Array Fetch(10g~).** 커서 FOR 루프는 내부적으로 100건씩 fetch합니다. 그래서 실습 [2-a]의 느린 원인은 SELECT가 아니라 **INSERT·COMMIT 반복**입니다.
 
 ## 토론 질문
