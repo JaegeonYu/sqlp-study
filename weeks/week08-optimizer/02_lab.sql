@@ -82,31 +82,49 @@ prompt
 prompt ===== [7] 바인드 피킹과 Adaptive Cursor Sharing =====
 alter system flush shared_pool;
 variable st varchar2(10)
+column bucket_id format 99
 prompt --- [7-a] 첫 실행 'WAIT' (하드 파싱 → 'WAIT' 를 엿보고 계획 결정)
 exec :st := 'WAIT'
-select /* w08_acs */ sum(amt) from w08_orders where state = :st;
+set feedback only
+select /* w08_acs */ ord_id, amt from w08_orders where state = :st;
+set feedback on
 @@../../common/xplan
 prompt --- [7-b] 'DONE' 1회차 (같은 커서 재사용)
 exec :st := 'DONE'
-select /* w08_acs */ sum(amt) from w08_orders where state = :st;
+set feedback only
+select /* w08_acs */ ord_id, amt from w08_orders where state = :st;
+set feedback on
 @@../../common/xplan
 prompt --- [7-c] 'DONE' 2회차
-select /* w08_acs */ sum(amt) from w08_orders where state = :st;
+set feedback only
+select /* w08_acs */ ord_id, amt from w08_orders where state = :st;
+set feedback on
 @@../../common/xplan
 prompt --- [7-d] 'DONE' 3회차
-select /* w08_acs */ sum(amt) from w08_orders where state = :st;
+set feedback only
+select /* w08_acs */ ord_id, amt from w08_orders where state = :st;
+set feedback on
 @@../../common/xplan
 prompt --- [7-e] 'WAIT' 다시
 exec :st := 'WAIT'
-select /* w08_acs */ sum(amt) from w08_orders where state = :st;
+set feedback only
+select /* w08_acs */ ord_id, amt from w08_orders where state = :st;
+set feedback on
 @@../../common/xplan
 select child_number, executions, buffer_gets, plan_hash_value,
        is_bind_sensitive as sens, is_bind_aware as aware, is_shareable as shr
 from   v$sql
 where  sql_text like 'select /* w08_acs */%'
 order  by child_number;
+prompt [처리 건수 구간별 실행 횟수: bucket 0 = 1천 건 미만, 1 = 1천~100만, 2 = 100만 이상]
+select h.child_number, h.bucket_id, h.count
+from   v$sql_cs_histogram h
+       join v$sql s on s.sql_id = h.sql_id and s.child_number = h.child_number
+where  s.sql_text like 'select /* w08_acs */%'
+order  by h.child_number, h.bucket_id;
 prompt 관찰: [7-b] 는 'WAIT' 용 계획으로 'DONE' 19.95만 건을 처리했다(Buffers). 몇 번째 실행부터 새 child 커서가 생기는가?
-prompt       IS_SHAREABLE = N 인 child 는 무엇을 의미할까?
+prompt       IS_BIND_AWARE = Y 인 child 의 계획은? IS_SHAREABLE = N 인 child 는 무엇을 의미할까?
+prompt       (집계 함수로 1행만 돌려주는 SQL 이라면 처리 건수 구간이 항상 같아 ACS 가 반응하지 않을 수 있다)
 
 prompt
 prompt ===== [8] 통계가 없는 테이블: 동적 샘플링 =====

@@ -1,7 +1,6 @@
 -- week08 cleanup: 실습 객체 제거 + BIG_TABLE 통계 원복(히스토그램 제거)
 @@../../common/session_init
 alter session set optimizer_mode = all_rows;
-alter session set optimizer_adaptive_plans = true;
 
 drop index if exists w08_rnd_ix;
 drop table if exists w08_orders purge;
