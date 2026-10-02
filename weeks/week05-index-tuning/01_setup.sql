@@ -3,10 +3,13 @@
 @@../../common/gen_big_table
 
 -- BIG_TABLE 인덱스 (99_cleanup에서 제거)
-create index if not exists w05_cust_ix   on big_table (cust_id);          -- 연속 저장 → CF 좋음
-create index if not exists w05_rnd_ix    on big_table (rnd_id);           -- 무작위   → CF 나쁨
-create index if not exists w05_grp_dt_ix on big_table (grp_id, reg_dt);   -- = 컬럼 선두
-create index if not exists w05_dt_grp_ix on big_table (reg_dt, grp_id);   -- 범위 컬럼 선두
+--   주의: SQL*Plus 에서는 세미콜론 뒤에 같은 줄 주석(-- ...)을 달면 문장이 끝나지 않는다. 주석은 윗줄에 둔다.
+-- cust_id: 연속 저장 → CF 좋음 / rnd_id: 무작위 → CF 나쁨
+create index if not exists w05_cust_ix   on big_table (cust_id);
+create index if not exists w05_rnd_ix    on big_table (rnd_id);
+-- 같은 두 컬럼, 순서만 다른 결합 인덱스: = 컬럼 선두 / 범위 컬럼 선두
+create index if not exists w05_grp_dt_ix on big_table (grp_id, reg_dt);
+create index if not exists w05_dt_grp_ix on big_table (reg_dt, grp_id);
 
 -- IOT 비교용: 같은 10만 건을 (1) 무작위 순서 힙 테이블 (2) IOT 로 저장
 drop table if exists w05_heap purge;
