@@ -123,6 +123,30 @@ set feedback on
 prompt 관찰: 결과는 둘 다 300건. 4-a 의 서브쿼리 단계 Starts 와 전체 Buffers 는? 4-b 의 WINDOW SORT PUSHED RANK 는 무엇을 줄여주는가?
 
 prompt
+prompt ===== [5-0] 이 DB에서 병렬 처리가 가능한가? =====
+column parameter format a30
+column value     format a20
+select parameter, value
+from   v$option
+where  parameter like 'Parallel%';
+column name format a30
+select name, value
+from   v$parameter
+where  name in ('cpu_count', 'parallel_max_servers', 'parallel_servers_target',
+                'parallel_degree_policy', 'parallel_min_servers');
+prompt --- 예상 계획(EXPLAIN PLAN)에서 옵티마이저가 병렬 계획을 만드는지 확인
+explain plan for
+select /*+ full(b) parallel(b 2) */ grp_id, sum(amount)
+from   big_table b
+group  by grp_id;
+set pagesize 0
+set heading off
+select plan_table_output from table(dbms_xplan.display(null, null, 'BASIC +PARALLEL +HINT_REPORT'));
+set pagesize 100
+set heading on
+prompt 관찰: Parallel execution 옵션이 TRUE 인가? 예상 계획에 PX 오퍼레이션이 있는가? Hint Report 에 parallel 힌트가 U(Unused) 로 표시되는가?
+
+prompt
 prompt ===== [5] 병렬 쿼리 실행계획 읽기 (DOP 2) =====
 prompt --- [5-a] 병렬 집계
 set feedback only
