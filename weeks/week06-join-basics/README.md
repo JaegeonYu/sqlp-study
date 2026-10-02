@@ -62,6 +62,7 @@ BUSAN 지역 VIP 고객의 2023년 1분기 고객별 주문 집계입니다. 원
   - 바깥쪽 NL이 모은 ROWID로 테이블 블록을 몰아서 읽습니다.
   - 그래서 같은 블록을 연속으로 방문하면 Buffers가 책의 계산보다 적게 나올 수 있습니다.
   - 책에 나오는 "테이블 Prefetch"가 기본 동작이 된 것으로 보면 됩니다.
+  - 캐시가 비어 있는 첫 실행에서는 테이블 액세스 단계의 **Reads가 Buffers보다 크게** 나올 수 있습니다(CI 관찰: Buffers 959 / Reads 2,440). Batching 과정에서 블록을 미리 읽어 두는(prefetch) 동작으로 보입니다. 원인을 V$SESSTAT의 `physical reads cache prefetch` 통계로 확인해 보는 것도 좋은 블로그 소재입니다.
 - **Adaptive Plan(12c~).** 힌트 없이 실행하면 옵티마이저가 실행 중에 NL과 Hash를 바꿀 수 있습니다(`Note: this is an adaptive plan`). 이번 주 실습은 모두 힌트로 방식을 고정했습니다.
 - **PGA 자동 관리.** 메모리는 `pga_aggregate_target` 범위 안에서 자동으로 배분됩니다. Free 에디션은 메모리가 2GB로 제한되어 있어서, 큰 Build 입력은 `Used-Tmp`(디스크 사용)가 나올 수 있습니다.
 
