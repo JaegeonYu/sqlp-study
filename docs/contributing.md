@@ -51,7 +51,7 @@ cp templates/theory.md weeks/week01-architecture-lock/theory/<github-id>.md
 - 이해: "이 부분을 한 문장으로 다시 설명해 주실 수 있나요?"
 
 ## 규칙
-1. **본인 파일만 수정합니다.** 실습 제출은 `weeks/weekNN-*/submissions/<본인 github id>/`, 이론 노트는 `weeks/weekNN-*/theory/<본인 github id>.md`입니다. 다른 경로를 건드리면 `check-submission` CI가 실패합니다.
+1. **본인 파일만 수정합니다.** 실습 제출은 `weeks/weekNN-*/submissions/<본인 github id>/`, 이론 노트는 `weeks/weekNN-*/theory/<본인 github id>.md`, 완독 포스팅은 `reading/readNN-*/<본인 github id>.md`입니다. 다른 경로를 건드리면 `check-submission` CI가 실패합니다.
 2. **리뷰어는 1명 지정합니다.** 매주 순번표(README)에 따라 정하고, 승인 1건이 있어야 머지할 수 있습니다.
 3. **리뷰 기준은 "수치 근거"입니다.** "좋아요" 대신 아래처럼 남깁니다.
    - "Buffers가 줄어든 이유가 테이블 랜덤 액세스 감소인지, 인덱스 스캔 범위 감소인지 구분해 주세요."
