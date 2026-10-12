@@ -244,7 +244,7 @@ git push -u origin read02/<id>
 - [x] `reading/` 폴더, `reading/FAQ.md`, `templates/reading-post.md`를 추가한다.
 - [x] `check-submission` CI가 `reading/readNN-*/<PR 작성자>.md`의 본인 파일 여부와 템플릿 미작성 여부, `reading/FAQ.md`의 진행자 전용 수정도 검사하도록 확장한다.
 - [x] PR 템플릿에 "완독 포스팅" 체크리스트를 추가한다.
-- [ ] `question` 라벨과 단계별 Milestone 3개를 만든다.
+- [x] `question` 라벨과 단계별 Milestone 3개를 만든다.
 - [ ] README에 23주 전체 일정과 리뷰 순번표를 반영한다.
 - [ ] 참여자가 1단계 시작 전에 git 설치, clone, 첫 PR 연습을 마친다. Docker 환경 구축([docs/environment.md](docs/environment.md))은 2단계 시작 전(9주차)까지 끝낸다.
 
