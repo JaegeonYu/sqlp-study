@@ -5,6 +5,7 @@ Claude Code는 `CLAUDE.md`를 통해 이 파일을 읽는다.
 
 ## 프로젝트
 - SQLP 준비생 대상 12주 실습 스터디. 교재는 『오라클 성능 고도화 원리와 해법 I·II』(조시형)이다. 범위는 II권 중심이고 I권은 핵심만 다룬다.
+- 실습 전에 《친절한 SQL 튜닝》 완독 단계(read01~09)를 둔다. 전체 운영 계획(23주, 문제집 병행, GitHub 진행 방식)은 `SQLP_PLAN.md`에 있다.
 - 학습 원칙은 **원리 → 재현 → 측정 → 글로 설명**이다. 모든 주장은 `DISPLAY_CURSOR ... 'ALLSTATS LAST'`의 Buffers / A-Rows / A-Time으로 증명한다.
 - 저장소 소유자이자 진행자는 GitHub `JaegeonYu`다. 스터디원은 Collaborator로 참여하고, 주차별 결과를 PR로 제출한다.
 - **공개 저장소다. 책의 코드·지문을 그대로 옮기지 않는다.** 개념을 재현하도록 새로 작성하고, 챌린지 정답은 저장소에 넣지 않는다.
@@ -19,7 +20,8 @@ scripts/                      호스트 헬퍼(sql/run/tkprof/wait-db, .sh + .ps
 weeks/weekNN-<topic>/         README.md, 01_setup.sql, 02_lab.sql, 03_challenge.sql, 99_cleanup.sql (+ 주차 전용 헬퍼)
 weeks/*/submissions/<id>/     스터디원 제출물 (result.md, concepts.md, lab.txt ...)
 weeks/*/theory/<id>.md        발표자의 이론 노트 (스터디 전 PR → 리뷰 코멘트로 질문 → 반영 후 머지)
-templates/                    submission.md, concepts.md, theory.md, blog-post.md
+reading/readNN-<topic>/<id>.md 1단계 《친절한 SQL 튜닝》 완독 포스팅, reading/FAQ.md는 진행자만 수정
+templates/                    submission.md, concepts.md, theory.md, reading-post.md, blog-post.md
 docs/                         environment.md(설치), contributing.md(제출·리뷰 규칙)
 ```
 접속 정보: `study/study@//localhost:1521/FREEPDB1`. 스크립트는 컨테이너 안 sqlplus로 실행한다(`bash scripts/run.sh <파일>`).
@@ -47,7 +49,7 @@ docs/                         environment.md(설치), contributing.md(제출·�
 
 ## 검증과 CI
 - `validate-sql / smoke`: SQL·스크립트(docker/, common/, scripts/, weeks/*/*.sql, 해당 워크플로)가 바뀐 PR에서 실제 Oracle을 띄워 전 주차를 `01 → 02 → 03 → 99` 순서로 실행한다. 바뀌지 않았으면 skipped(성공 처리)된다.
-- `check-submission / check`: 모든 PR에서 실행된다. 제출(`submissions/<PR 작성자>/`)과 이론 노트(`theory/<PR 작성자>.md`)가 본인 파일인지, `result.md`와 `concepts.md`(week01~11)가 작성되었는지 검사한다.
+- `check-submission / check`: 모든 PR에서 실행된다. 제출(`submissions/<PR 작성자>/`)과 이론 노트(`theory/<PR 작성자>.md`), 완독 포스팅(`reading/readNN-*/<PR 작성자>.md`)이 본인 파일인지, `reading/FAQ.md`는 저장소 소유자만 수정했는지, `result.md`와 `concepts.md`(week01~11)가 작성되었는지 검사한다.
 - main 브랜치 보호: PR 필수, 승인 1건, 필수 체크 `check`와 `smoke`, Squash merge만 허용, 머지 후 브랜치 자동 삭제.
   - 관리자(JaegeonYu)는 우회 가능(`enforce_admins=false`)하다. 스터디원 합류 전에 진행자 PR을 머지하기 위해서다.
 - **CI 통과는 "오류 없음"만 의미한다.** 주차 스크립트를 추가하거나 바꾸면 `gh run view <run> --job <smoke job> --log`로 로그를 받아, 수치가 의도한 현상을 실제로 보여주는지 확인한다.
