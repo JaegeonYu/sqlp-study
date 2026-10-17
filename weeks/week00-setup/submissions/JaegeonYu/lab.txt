@@ -1,0 +1,214 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Table created.
+
+
+===== [1] BIG_TABLE 규모 =====
+
+TABLE_NAME                                                                                                                         NUM_ROWS     BLOCKS AVG_ROW_LEN
+-------------------------------------------------------------------------------------------------------------------------------- ---------- ---------- -----------
+BIG_TABLE                                                                                                                           1000000      19044         131
+
+관찰: 블록 수(BLOCKS)를 기억해 두자. 아래 [2]의 Buffers와 비교한다.
+
+===== [2] 테이블 전체 스캔으로 1주일치 집계 =====
+
+  COUNT(*) SUM(AMOUNT)
+---------- -----------
+      7000    35064500
+
+SQL_ID  f1rvpmzqg9g3y, child number 0
+-------------------------------------
+select /*+ full(b) */ count(*), sum(amount) from   big_table b where
+reg_dt between date '2023-01-01' and date '2023-01-07'
+
+Plan hash value: 599409829
+
+---------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+---------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |           |      1 |        |      1 |00:00:00.04 |   18868 |  18865 |
+|   1 |  SORT AGGREGATE    |           |      1 |      1 |      1 |00:00:00.04 |   18868 |  18865 |
+|*  2 |   TABLE ACCESS FULL| BIG_TABLE |      1 |   8006 |   7000 |00:00:00.04 |   18868 |  18865 |
+---------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter(("REG_DT"<=TO_DATE(' 2023-01-07 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+              "REG_DT">=TO_DATE(' 2023-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss')))
+
+관찰: 7,000건을 구하려고 Buffers를 얼마나 읽었나? [1]의 BLOCKS와 비교해 보자.
+
+===== [3] 인덱스 범위 스캔으로 같은 집계 =====
+
+  COUNT(*) SUM(AMOUNT)
+---------- -----------
+      7000    35064500
+
+1 row selected.
+
+SQL_ID  2g82r7zqwnn5r, child number 0
+-------------------------------------
+select /*+ index(b w00_reg_dt_ix) */ count(*), sum(amount) from
+big_table b where  reg_dt between date '2023-01-01' and date
+'2023-01-07'
+
+Plan hash value: 2239651889
+
+----------------------------------------------------------------------------------------------------------------
+| Id  | Operation                            | Name          | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+----------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                     |               |      1 |        |      1 |00:00:00.01 |     154 |
+|   1 |  SORT AGGREGATE                      |               |      1 |      1 |      1 |00:00:00.01 |     154 |
+|   2 |   TABLE ACCESS BY INDEX ROWID BATCHED| BIG_TABLE     |      1 |   8006 |   7000 |00:00:00.01 |     154 |
+|*  3 |    INDEX RANGE SCAN                  | W00_REG_DT_IX |      1 |   8006 |   7000 |00:00:00.01 |      21 |
+----------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("REG_DT">=TO_DATE(' 2023-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND
+              "REG_DT"<=TO_DATE(' 2023-01-07 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+
+관찰: Buffers가 몇 분의 1로 줄었나? 인덱스 스캔과 테이블 액세스 단계가 각각 몇 블록을 읽었나?
+(힌트: reg_dt는 날짜순으로 저장되어 있다)
+
+===== [4] 세션 통계로 같은 비교 =====
+--- [4-a] FULL
+
+  COUNT(*) SUM(AMOUNT)
+---------- -----------
+      7000    35064500
+
+1 row selected.
+
+
+STAT_NAME                                                          DELTA
+------------------------------------------------------- ----------------
+SQL*Net roundtrips to/from client                                      3
+consistent gets                                                   18,873
+db block gets                                                         12
+execute count                                                          2
+parse count (total)                                                    2
+physical reads                                                    18,865
+physical reads direct                                             18,865
+redo size                                                            280
+session logical reads                                             18,885
+table scan rows gotten                                         1,000,017
+undo change vector size                                              240
+user calls                                                             5
+--- [4-b] INDEX
+
+  COUNT(*) SUM(AMOUNT)
+---------- -----------
+      7000    35064500
+
+1 row selected.
+
+
+STAT_NAME                                                          DELTA
+------------------------------------------------------- ----------------
+SQL*Net roundtrips to/from client                                      3
+consistent gets                                                      158
+db block gets                                                          1
+execute count                                                          2
+parse count (total)                                                    2
+session logical reads                                                159
+table fetch by rowid                                               7,000
+table scan rows gotten                                                34
+undo change vector size                                              120
+user calls                                                             5
+관찰: session logical reads 와 [2], [3]의 Buffers 가 거의 같은가? table scan rows gotten, table fetch by rowid 는 각각 무엇을 센 값인가?
+
+===== [5] 예상(E-Rows) vs 실제(A-Rows) =====
+
+  COUNT(*)
+----------
+     10000
+
+1 row selected.
+
+SQL_ID  2rqcrnnuxbtyb, child number 0
+-------------------------------------
+select count(*) from   big_table where  status = 'N'
+
+Plan hash value: 599409829
+
+---------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+---------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |           |      1 |        |      1 |00:00:00.04 |   18868 |  18865 |
+|   1 |  SORT AGGREGATE    |           |      1 |      1 |      1 |00:00:00.04 |   18868 |  18865 |
+|*  2 |   TABLE ACCESS FULL| BIG_TABLE |      1 |    500K|  10000 |00:00:00.04 |   18868 |  18865 |
+---------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - filter("STATUS"='N')
+
+관찰: E-Rows 는 왜 500,000 근처일까? (status 는 값이 2개뿐이고 히스토그램이 없다) 실제는 몇 건인가?
+
+===== [6] AUTOTRACE 통계 =====
+
+100 rows selected.
+
+
+Statistics
+----------------------------------------------------------
+         12  recursive calls
+          0  db block gets
+      18902  consistent gets
+      18865  physical reads
+          0  redo size
+       4699  bytes sent via SQL*Net to client
+        258  bytes received via SQL*Net from client
+          8  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+        100  rows processed
+
+관찰: consistent gets, SQL*Net roundtrips, rows processed. cust_id 에는 인덱스가 없다.
+
+===== [7] SQL 트레이스 → TKPROF =====
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+  COUNT(*) SUM(AMOUNT)
+---------- -----------
+      7000    35064500
+
+1 row selected.
+
+
+  COUNT(*) SUM(AMOUNT)
+---------- -----------
+      7000    35064500
+
+1 row selected.
+
+
+PL/SQL procedure successfully completed.
+
+
+TRACE_FILE
+----------------------------------------------------------------------------------------------------
+/opt/oracle/diag/rdbms/free/FREE/trace/FREE_ora_2382_week00.trc
+
+1 row selected.
+
+호스트 터미널에서 TKPROF 실행:  bash scripts/tkprof.sh <식별자>   (PowerShell: .\scripts\tkprof.ps1 <식별자>)
+관찰: TKPROF 의 query(=consistent gets), disk, Row Source Operation 을 [2], [3]과 비교해 보자.
